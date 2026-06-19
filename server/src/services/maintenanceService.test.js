@@ -34,7 +34,6 @@ test("runDailyMaintenance syncs ESPN data then creates snapshots", async () => {
   const result = await runDailyMaintenance(
     {
       now: new Date("2026-06-19T01:30:00.000Z"),
-      dryRun: true,
     },
     {
       syncEspnEnrichment: async (options) => {
@@ -60,12 +59,65 @@ test("runDailyMaintenance syncs ESPN data then creates snapshots", async () => {
       {
         dateFrom: "2026-06-18",
         dateTo: "2026-06-20",
-        dryRun: true,
+        dryRun: false,
       },
     ],
     ["snapshot"],
   ]);
   assert.deepEqual(result.snapshot, { created: 2, skipped: 5, total: 7 });
+});
+
+test("runDailyMaintenance skips snapshot writes during dry run", async () => {
+  const calls = [];
+  const result = await runDailyMaintenance(
+    {
+      now: new Date("2026-06-19T01:30:00.000Z"),
+      dryRun: true,
+    },
+    {
+      syncEspnEnrichment: async () => ({ dryRun: true, matched: 3, persisted: 0 }),
+      createMissingPredictionSnapshots: async () => {
+        calls.push("snapshot");
+        return { created: 2, skipped: 5, total: 7 };
+      },
+    },
+  );
+
+  assert.equal(result.status, "ok");
+  assert.deepEqual(calls, []);
+  assert.deepEqual(result.snapshot, {
+    dryRun: true,
+    created: 0,
+    skipped: 0,
+    total: 0,
+    snapshots: [],
+    message: "Prediction snapshot creation skipped during dry run.",
+  });
+});
+
+test("runDailyMaintenance forwards explicit maintenance dates to ESPN sync", async () => {
+  let syncOptions;
+  const result = await runDailyMaintenance(
+    {
+      now: new Date("2026-06-19T01:30:00.000Z"),
+      dateFrom: "2026-06-10",
+      dateTo: "2026-06-12",
+    },
+    {
+      syncEspnEnrichment: async (options) => {
+        syncOptions = options;
+        return { matched: 1, persisted: 1 };
+      },
+      createMissingPredictionSnapshots: async () => ({ created: 0, skipped: 1, total: 1 }),
+    },
+  );
+
+  assert.equal(result.status, "ok");
+  assert.deepEqual(syncOptions, {
+    dateFrom: "2026-06-10",
+    dateTo: "2026-06-12",
+    dryRun: false,
+  });
 });
 
 test("runDailyMaintenance returns partial when ESPN sync fails but snapshots succeed", async () => {

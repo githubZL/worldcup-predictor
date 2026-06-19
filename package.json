@@ -17,6 +17,7 @@
     "report:espn-data-quality": "node server/src/scripts/reportEspnDataQuality.js",
     "report:model-backtest": "node server/src/scripts/reportModelBacktest.js",
     "snapshot:predictions": "node server/src/scripts/snapshotPredictions.js",
+    "maintenance:daily": "node server/src/scripts/runDailyMaintenance.js",
     "probe:data-sources": "node server/src/scripts/probeDataSources.js",
     "probe:espn-canonical": "node server/src/scripts/probeEspnCanonicalDraft.js",
     "probe:espn-sync-plan": "node server/src/scripts/probeEspnSyncPlan.js",

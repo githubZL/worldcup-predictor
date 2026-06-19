@@ -47,10 +47,21 @@ export async function runDailyMaintenance(
     errors.push(summarizeError("espn-sync", error));
   }
 
-  try {
-    snapshot = await createMissingPredictionSnapshots({ now });
-  } catch (error) {
-    errors.push(summarizeError("prediction-snapshot", error));
+  if (dryRun) {
+    snapshot = {
+      dryRun: true,
+      created: 0,
+      skipped: 0,
+      total: 0,
+      snapshots: [],
+      message: "Prediction snapshot creation skipped during dry run.",
+    };
+  } else {
+    try {
+      snapshot = await createMissingPredictionSnapshots({ now });
+    } catch (error) {
+      errors.push(summarizeError("prediction-snapshot", error));
+    }
   }
 
   const status = errors.length === 0 ? "ok" : snapshot ? "partial" : "failed";
