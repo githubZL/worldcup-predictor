@@ -1,5 +1,6 @@
 import { championRanking, factorWeights, matches, teams, venues } from "../data/mockData.js";
 import { readDatabaseMatches } from "./databaseRepository.js";
+import { buildDataHealth } from "./dataHealthService.js";
 import { buildDashboardMeta } from "./dataQuality.js";
 import { readLatestMaintenanceStatus } from "./maintenanceStatusService.js";
 import { buildModelReview } from "./modelReviewService.js";
@@ -214,6 +215,7 @@ export async function getDashboard() {
     meta: {
       ...meta,
       maintenance,
+      dataHealth: buildDataHealth(enrichedMatches),
     },
     matches: enrichedMatches,
     championRanking,

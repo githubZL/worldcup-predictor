@@ -298,6 +298,11 @@ const fallbackDashboard = {
       prediction: { label: "预测", status: "computed", detail: "由泊松比分矩阵计算" },
       market: { label: "竞彩", status: "simulated", detail: "真实竞彩赔率暂未接入" },
     },
+    dataHealth: {
+      status: "unknown",
+      snapshot: { upcoming: 0, withSnapshot: 0, missing: 0, coveragePct: 0 },
+      resultSync: { overdueWithoutResult: 0 },
+    },
   },
   matches: fallbackMatches,
   championRanking: fallbackChampions,
@@ -392,6 +397,32 @@ function formatMaintenanceStatus(maintenance) {
   const errors = maintenance.errorCount ? ` · 错误 ${maintenance.errorCount}` : "";
 
   return `维护状态：${statusText} · 最近同步：${syncedAt} · ESPN ${persisted} 场 · 快照 ${snapshots}${errors}`;
+}
+
+function getDataHealthClass(status) {
+  if (status === "ok") return "good";
+  if (status === "warning") return "warn";
+  if (status === "action_needed") return "danger";
+  return "muted";
+}
+
+function formatDataHealthStatus(dataHealth) {
+  if (!dataHealth || dataHealth.status === "unknown") return "数据健康：未知";
+
+  const missing = dataHealth.snapshot?.missing ?? 0;
+  const upcoming = dataHealth.snapshot?.upcoming ?? 0;
+  const coverage = dataHealth.snapshot?.coveragePct ?? 0;
+  const overdue = dataHealth.resultSync?.overdueWithoutResult ?? 0;
+
+  if (overdue > 0) {
+    return `数据健康：需处理 · ${overdue} 场已开赛超时未同步比分 · 快照覆盖 ${coverage}%`;
+  }
+
+  if (missing > 0) {
+    return `数据健康：待补快照 · 未来 ${upcoming} 场缺 ${missing} 场 · 覆盖 ${coverage}%`;
+  }
+
+  return `数据健康：正常 · 未来 ${upcoming} 场快照覆盖 ${coverage}%`;
 }
 
 function getDateKey(value) {
@@ -640,6 +671,9 @@ export function App() {
   const maintenance = dashboardData.meta?.maintenance;
   const maintenanceText = formatMaintenanceStatus(maintenance);
   const maintenanceClass = getMaintenanceStatusClass(maintenance?.status);
+  const dataHealth = dashboardData.meta?.dataHealth ?? fallbackDashboard.meta.dataHealth;
+  const dataHealthText = formatDataHealthStatus(dataHealth);
+  const dataHealthClass = getDataHealthClass(dataHealth?.status);
   const nextMatchDateKey = useMemo(() => getNextMatchDateKey(currentMatches), [currentMatches]);
   const stageOptions = useMemo(() => ["all", ...new Set(currentMatches.map((match) => match.stage).filter(Boolean))], [currentMatches]);
   const groupOptions = useMemo(() => ["all", ...new Set(currentMatches.map((match) => match.group).filter(Boolean))], [currentMatches]);
@@ -822,6 +856,7 @@ export function App() {
             <b>数据来源：{dataSourceText}</b>
             <b>{dataStatus === "error" ? "兜底" : dataStatus === "loading" ? "同步中" : "正常"}</b>
             <b className={`maintenance-status ${maintenanceClass}`}>{maintenanceText}</b>
+            <b className={`data-health-status ${dataHealthClass}`}>{dataHealthText}</b>
           </div>
           <div className="toolbar">
             <button className="select-btn" onClick={() => setTimeMode((mode) => mode === "beijing" ? "local" : "beijing")} title="切换赛程显示时区">

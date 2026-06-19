@@ -177,20 +177,30 @@ h1 {
   text-overflow: ellipsis;
 }
 
-.maintenance-status.good {
+.maintenance-status.good,
+.data-health-status.good {
   color: var(--green);
 }
 
-.maintenance-status.warn {
+.maintenance-status.warn,
+.data-health-status.warn {
   color: #e2b341;
 }
 
-.maintenance-status.danger {
+.maintenance-status.danger,
+.data-health-status.danger {
   color: var(--red);
 }
 
-.maintenance-status.muted {
+.maintenance-status.muted,
+.data-health-status.muted {
   color: var(--muted);
+}
+
+.data-health-status {
+  max-width: 440px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .select-btn {
