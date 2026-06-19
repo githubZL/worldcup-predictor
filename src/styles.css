@@ -171,6 +171,28 @@ h1 {
   white-space: nowrap;
 }
 
+.maintenance-status {
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.maintenance-status.good {
+  color: var(--green);
+}
+
+.maintenance-status.warn {
+  color: #e2b341;
+}
+
+.maintenance-status.danger {
+  color: var(--red);
+}
+
+.maintenance-status.muted {
+  color: var(--muted);
+}
+
 .select-btn {
   padding: 0 12px;
   background: #0c1b24;

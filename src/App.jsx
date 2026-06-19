@@ -371,6 +371,29 @@ function formatUpdatedAt(value) {
   }).format(date);
 }
 
+function getMaintenanceStatusClass(status) {
+  if (status === "ok") return "good";
+  if (status === "partial") return "warn";
+  if (status === "failed") return "danger";
+  return "muted";
+}
+
+function formatMaintenanceStatus(maintenance) {
+  if (!maintenance || maintenance.status === "unknown") return "维护状态：未知";
+
+  const statusText = {
+    ok: "正常",
+    partial: "部分失败",
+    failed: "失败",
+  }[maintenance.status] ?? "未知";
+  const syncedAt = formatUpdatedAt(maintenance.generatedAt);
+  const persisted = maintenance.espn?.persisted ?? 0;
+  const snapshots = maintenance.snapshot?.created ?? 0;
+  const errors = maintenance.errorCount ? ` · 错误 ${maintenance.errorCount}` : "";
+
+  return `维护状态：${statusText} · 最近同步：${syncedAt} · ESPN ${persisted} 场 · 快照 ${snapshots}${errors}`;
+}
+
 function getDateKey(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
@@ -614,6 +637,9 @@ export function App() {
         ? `PostgreSQL 数据库 + ${weatherSource === "open-meteo-with-fallback" ? "Open-Meteo" : "天气兜底"}`
         : "公开 API + 本地兜底";
   const lastUpdated = formatUpdatedAt(dashboardData.meta?.generatedAt);
+  const maintenance = dashboardData.meta?.maintenance;
+  const maintenanceText = formatMaintenanceStatus(maintenance);
+  const maintenanceClass = getMaintenanceStatusClass(maintenance?.status);
   const nextMatchDateKey = useMemo(() => getNextMatchDateKey(currentMatches), [currentMatches]);
   const stageOptions = useMemo(() => ["all", ...new Set(currentMatches.map((match) => match.stage).filter(Boolean))], [currentMatches]);
   const groupOptions = useMemo(() => ["all", ...new Set(currentMatches.map((match) => match.group).filter(Boolean))], [currentMatches]);
@@ -795,6 +821,7 @@ export function App() {
             <span>数据更新时间：{lastUpdated}</span>
             <b>数据来源：{dataSourceText}</b>
             <b>{dataStatus === "error" ? "兜底" : dataStatus === "loading" ? "同步中" : "正常"}</b>
+            <b className={`maintenance-status ${maintenanceClass}`}>{maintenanceText}</b>
           </div>
           <div className="toolbar">
             <button className="select-btn" onClick={() => setTimeMode((mode) => mode === "beijing" ? "local" : "beijing")} title="切换赛程显示时区">
