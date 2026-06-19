@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildMatchPredictionEnrichment } from "./dataGateway.js";
+import { buildMatchPredictionEnrichment, resolveWeatherDisplay } from "./dataGateway.js";
 
 test("buildMatchPredictionEnrichment passes only pre-match ESPN stats and keeps odds plus lineups observable", () => {
   const enrichment = buildMatchPredictionEnrichment({
@@ -49,4 +49,15 @@ test("buildMatchPredictionEnrichment passes only pre-match ESPN stats and keeps 
   assert.equal(enrichment.away.recentForm.length, 1);
   assert.equal(enrichment.home.marketOdds.length, 1);
   assert.equal(enrichment.home.lineups.length, 1);
+});
+
+test("resolveWeatherDisplay shows pending for future matches outside forecast horizon", () => {
+  const weather = resolveWeatherDisplay({
+    matchTime: "2026-07-10T10:00:00.000Z",
+    now: new Date("2026-06-20T10:00:00.000Z"),
+    weatherSnapshot: null,
+    fallbackWeather: "晴 25°C",
+  });
+
+  assert.equal(weather, "待更新");
 });

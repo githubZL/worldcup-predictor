@@ -21,6 +21,8 @@ import {
 
 const teamById = new Map(teams.map((team) => [team.id, team]));
 const venueById = new Map(venues.map((venue) => [venue.id, venue]));
+const FORECAST_HORIZON_DAYS = 16;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 function normalizeLocalMatch(match) {
   return {
@@ -100,6 +102,23 @@ export function buildMatchPredictionEnrichment(match) {
   };
 }
 
+export function resolveWeatherDisplay({
+  matchTime,
+  now = new Date(),
+  weatherSnapshot,
+  fallbackWeather,
+}) {
+  const kickoffTime = new Date(matchTime).getTime();
+  const nowTime = now instanceof Date ? now.getTime() : new Date(now).getTime();
+  const forecastHorizonMs = FORECAST_HORIZON_DAYS * DAY_MS;
+  const isFutureBeyondForecast = Number.isFinite(kickoffTime)
+    && Number.isFinite(nowTime)
+    && kickoffTime > nowTime + forecastHorizonMs;
+
+  if (!weatherSnapshot && isFutureBeyondForecast) return "待更新";
+  return formatWeatherSnapshot(weatherSnapshot, fallbackWeather);
+}
+
 async function enrichMatch(match) {
   const homeTeam = match.homeTeam;
   const awayTeam = match.awayTeam;
@@ -107,8 +126,8 @@ async function enrichMatch(match) {
   let weatherSnapshot = null;
   const kickoffTime = new Date(match.time).getTime();
   const now = Date.now();
-  const sixteenDays = 16 * 24 * 60 * 60 * 1000;
-  const isForecastable = kickoffTime >= now && kickoffTime <= now + sixteenDays;
+  const forecastHorizonMs = FORECAST_HORIZON_DAYS * DAY_MS;
+  const isForecastable = kickoffTime >= now && kickoffTime <= now + forecastHorizonMs;
 
   if (process.env.ENABLE_LIVE_WEATHER !== "false" && isForecastable) {
     try {
@@ -118,7 +137,12 @@ async function enrichMatch(match) {
     }
   }
 
-  const weather = formatWeatherSnapshot(weatherSnapshot, venue.fallbackWeather);
+  const weather = resolveWeatherDisplay({
+    matchTime: match.time,
+    now: new Date(now),
+    weatherSnapshot,
+    fallbackWeather: venue.fallbackWeather,
+  });
   const localizedHomeTeam = { ...homeTeam, name: localizeTeamName(homeTeam.name) };
   const localizedAwayTeam = { ...awayTeam, name: localizeTeamName(awayTeam.name) };
   const localizedVenue = {
