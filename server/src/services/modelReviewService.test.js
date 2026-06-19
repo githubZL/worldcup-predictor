@@ -138,6 +138,73 @@ test("buildModelReview exposes official snapshot review and current-model backte
   assert.equal(review.backtest.reviewPolicy, "current_model_backtest");
 });
 
+test("buildModelReview exposes official snapshot rows and backtest rows separately", () => {
+  const review = buildModelReview([
+    {
+      id: "snapshot-hit",
+      time: "2026-06-18T16:00:00.000Z",
+      home: "墨西哥",
+      away: "韩国",
+      modelVersion: "poisson-v0.8",
+      predictionSource: "snapshot",
+      predictionReview: {
+        isFinished: true,
+        actualScore: "1 - 0",
+        predictedScore: "1 - 0",
+        fullTimeHit: true,
+        scoreHit: true,
+        goalDiffError: 0,
+        totalGoalsError: 0,
+      },
+      backtestReview: {
+        isFinished: true,
+        actualScore: "1 - 0",
+        predictedScore: "1 - 1",
+        fullTimeHit: false,
+        scoreHit: false,
+        goalDiffError: 1,
+        totalGoalsError: 1,
+      },
+    },
+    {
+      id: "computed-miss",
+      time: "2026-06-18T19:00:00.000Z",
+      home: "瑞士",
+      away: "波黑",
+      modelVersion: "poisson-v0.8",
+      predictionSource: "computed",
+      predictionReview: {
+        isFinished: true,
+        actualScore: "4 - 1",
+        predictedScore: "1 - 1",
+        fullTimeHit: false,
+        scoreHit: false,
+        goalDiffError: 3,
+        totalGoalsError: 3,
+      },
+      backtestReview: {
+        isFinished: true,
+        actualScore: "4 - 1",
+        predictedScore: "1 - 1",
+        fullTimeHit: false,
+        scoreHit: false,
+        goalDiffError: 3,
+        totalGoalsError: 3,
+      },
+    },
+  ]);
+
+  assert.equal(review.official.sampleSize, 1);
+  assert.equal(review.official.excludedSampleSize, 1);
+  assert.deepEqual(review.official.matches.map((row) => row.id), ["snapshot-hit"]);
+  assert.deepEqual(review.official.biggestMisses.map((row) => row.id), ["snapshot-hit"]);
+
+  assert.equal(review.backtest.sampleSize, 2);
+  assert.deepEqual(review.backtest.matches.map((row) => row.id), ["snapshot-hit", "computed-miss"]);
+  assert.deepEqual(review.backtest.biggestMisses.map((row) => row.id), ["computed-miss", "snapshot-hit"]);
+  assert.equal(review.backtest.biggestMisses[0].actualScore, "4 - 1");
+});
+
 test("buildModelBacktestReport exposes reviewed match details and biggest misses", () => {
   const report = buildModelBacktestReport([
     {

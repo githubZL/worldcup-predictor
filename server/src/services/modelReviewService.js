@@ -12,19 +12,23 @@ export function buildModelReview(matches) {
   const finished = matches.filter((match) => match.predictionReview?.isFinished);
   const officialMatches = finished.filter((match) => match.predictionSource === "snapshot");
   const totalFinishedSize = finished.length;
+  const officialRows = sortRowsByTime(officialMatches.map((match) => buildReviewMatchRow(match, match.predictionReview)));
+  const backtestRows = sortRowsByTime(matches
+    .filter((match) => getBacktestReview(match)?.isFinished)
+    .map((match) => buildReviewMatchRow(match, getBacktestReview(match))));
   const official = buildReviewSummary({
-    reviewed: officialMatches.map((match) => match.predictionReview),
+    reviewed: officialRows.map(rowToReview),
     reviewPolicy: "official_snapshot_only",
     totalFinishedSize,
     excludedSampleSize: totalFinishedSize - officialMatches.length,
+    rows: officialRows,
   });
   const backtest = buildReviewSummary({
-    reviewed: matches
-      .map((match) => match.backtestReview ?? match.predictionReview)
-      .filter((review) => review?.isFinished),
+    reviewed: backtestRows.map(rowToReview),
     reviewPolicy: "current_model_backtest",
     totalFinishedSize,
     excludedSampleSize: 0,
+    rows: backtestRows,
   });
 
   return {
@@ -58,6 +62,55 @@ function buildBacktestMatchRow(match) {
     totalGoalsError: review.totalGoalsError,
     signals: getSignals(match),
   };
+}
+
+function buildReviewMatchRow(match, review) {
+  return {
+    id: match.id,
+    time: match.time ?? null,
+    home: match.home,
+    away: match.away,
+    modelVersion: match.modelVersion ?? null,
+    predictionSource: match.predictionSource ?? null,
+    actualScore: review.actualScore,
+    predictedScore: review.predictedScore ?? match.predictedScore ?? match.score,
+    fullTimeHit: review.fullTimeHit,
+    scoreHit: review.scoreHit,
+    goalDiffError: review.goalDiffError,
+    totalGoalsError: review.totalGoalsError,
+  };
+}
+
+function rowToReview(row) {
+  return {
+    isFinished: true,
+    fullTimeHit: row.fullTimeHit,
+    scoreHit: row.scoreHit,
+    goalDiffError: row.goalDiffError,
+    totalGoalsError: row.totalGoalsError,
+  };
+}
+
+function sortRowsByTime(rows) {
+  return [...rows].sort((a, b) => {
+    const aTime = new Date(a.time ?? 0).getTime();
+    const bTime = new Date(b.time ?? 0).getTime();
+    return aTime - bTime || String(a.id).localeCompare(String(b.id));
+  });
+}
+
+function selectBiggestMisses(rows, limit = 5) {
+  return [...rows]
+    .sort((a, b) => {
+      const goalDiffDelta = b.goalDiffError - a.goalDiffError;
+      if (goalDiffDelta !== 0) return goalDiffDelta;
+      const totalGoalsDelta = b.totalGoalsError - a.totalGoalsError;
+      if (totalGoalsDelta !== 0) return totalGoalsDelta;
+      const aTime = new Date(a.time ?? 0).getTime();
+      const bTime = new Date(b.time ?? 0).getTime();
+      return aTime - bTime || String(a.id).localeCompare(String(b.id));
+    })
+    .slice(0, limit);
 }
 
 function buildSignalBreakdown(rows) {
@@ -110,7 +163,7 @@ export function buildModelBacktestReport(matches, { modelVersion } = {}) {
   };
 }
 
-function buildReviewSummary({ reviewed, reviewPolicy, totalFinishedSize, excludedSampleSize }) {
+function buildReviewSummary({ reviewed, reviewPolicy, totalFinishedSize, excludedSampleSize, rows = [] }) {
   const sampleSize = reviewed.length;
   const fullTimeHits = reviewed.filter((review) => review.fullTimeHit).length;
   const scoreHits = reviewed.filter((review) => review.scoreHit).length;
@@ -136,6 +189,8 @@ function buildReviewSummary({ reviewed, reviewPolicy, totalFinishedSize, exclude
     averageTotalGoalsError,
     profitRate: null,
     averageReturn: averageGoalDiffError,
+    matches: rows,
+    biggestMisses: selectBiggestMisses(rows),
     markets: [
       { label: "胜平负", hitRate: overallHitRate, roi: null },
       { label: "比分命中", hitRate: scoreHitRate, roi: null },
