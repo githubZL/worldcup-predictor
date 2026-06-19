@@ -1,6 +1,7 @@
 import "dotenv/config";
 
 import { runDailyMaintenance } from "../services/maintenanceService.js";
+import { writeLatestMaintenanceStatus } from "../services/maintenanceStatusService.js";
 
 function readArg(name) {
   const prefix = `--${name}=`;
@@ -14,6 +15,8 @@ const result = await runDailyMaintenance({
   dateTo: readArg("date-to"),
   dryRun: args.has("--dry-run"),
 });
+
+await writeLatestMaintenanceStatus(result);
 
 console.log(JSON.stringify(result, null, 2));
 

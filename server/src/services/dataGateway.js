@@ -1,6 +1,7 @@
 import { championRanking, factorWeights, matches, teams, venues } from "../data/mockData.js";
 import { readDatabaseMatches } from "./databaseRepository.js";
 import { buildDashboardMeta } from "./dataQuality.js";
+import { readLatestMaintenanceStatus } from "./maintenanceStatusService.js";
 import { buildModelReview } from "./modelReviewService.js";
 import { resolveMatchPlaceholders } from "./placeholderResolver.js";
 import { MODEL_VERSION, buildPrediction, buildPredictionFromSnapshot, buildPredictionReview } from "./predictionService.js";
@@ -202,13 +203,18 @@ export async function getDashboard() {
   const { matches: enrichedMatches, source } = await getMatches();
   const weatherSource = process.env.ENABLE_LIVE_WEATHER === "false" ? "local-weather-fallback" : "open-meteo-with-fallback";
   const sportsSource = process.env.ENABLE_SPORTSDB === "false" ? "disabled" : "thesportsdb-optional";
+  const maintenance = await readLatestMaintenanceStatus();
+  const meta = buildDashboardMeta({
+    scheduleSource: source,
+    weatherSource,
+    sportsSource,
+  });
 
   return {
-    meta: buildDashboardMeta({
-      scheduleSource: source,
-      weatherSource,
-      sportsSource,
-    }),
+    meta: {
+      ...meta,
+      maintenance,
+    },
     matches: enrichedMatches,
     championRanking,
     factorWeights,
