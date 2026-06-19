@@ -302,6 +302,7 @@ const fallbackDashboard = {
       status: "unknown",
       snapshot: { upcoming: 0, withSnapshot: 0, missing: 0, coveragePct: 0 },
       resultSync: { overdueWithoutResult: 0 },
+      inputCoverage: { status: "unknown", metrics: [] },
     },
   },
   matches: fallbackMatches,
@@ -1159,6 +1160,7 @@ function InfoDrawer({ type, dataHealth, onClose }) {
   const isDataHealth = type === "data-health";
   const healthIssues = dataHealth?.issues ?? [];
   const healthSummary = dataHealth?.issueSummary ?? {};
+  const inputMetrics = dataHealth?.inputCoverage?.metrics ?? [];
   const drawerTitle = isDataHealth ? "数据健康诊断" : isModel ? "模型说明" : "设置";
   const drawerSubtitle = isDataHealth
     ? "快照、赛果同步与建议动作"
@@ -1188,6 +1190,23 @@ function InfoDrawer({ type, dataHealth, onClose }) {
               <span>高优先级 {healthSummary.high ?? 0}</span>
               <span>中优先级 {healthSummary.medium ?? 0}</span>
               <span>总问题 {healthSummary.total ?? 0}</span>
+            </div>
+          </section>
+          <section>
+            <h3>模型输入覆盖率</h3>
+            <div className="coverage-list">
+              {inputMetrics.map((metric) => (
+                <div className={`coverage-row ${metric.status}`} key={metric.key}>
+                  <div>
+                    <b>{metric.label}</b>
+                    <span>{metric.covered}/{metric.total}</span>
+                  </div>
+                  <div className="coverage-track">
+                    <i style={{ width: `${Math.min(metric.coveragePct, 100)}%` }} />
+                  </div>
+                  <em>{metric.coveragePct}%</em>
+                </div>
+              ))}
             </div>
           </section>
           <section>

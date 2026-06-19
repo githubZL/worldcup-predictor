@@ -92,6 +92,87 @@ test("buildDataHealth exposes diagnostic issues with suggested actions", () => {
   assert.equal(health.issueSummary.medium, 1);
 });
 
+test("buildDataHealth reports model input coverage for real data fields", () => {
+  const health = buildDataHealth([
+    {
+      id: "rich-inputs",
+      time: "2026-06-21T10:00:00.000Z",
+      home: "巴西",
+      away: "法国",
+      predictionSource: "snapshot",
+      weatherSnapshot: { temperatureC: 24 },
+      venueMeta: { latitude: 25.7, longitude: -80.2, altitude: 2 },
+      predictionBreakdown: {
+        strength: {
+          home: { source: "database" },
+          away: { source: "database" },
+        },
+        modelSignals: {
+          form: {
+            details: {
+              home: { sampleSize: 5 },
+              away: { sampleSize: 4 },
+            },
+          },
+          production: {
+            details: {
+              home: { sampleSize: 2 },
+              away: { sampleSize: 1 },
+            },
+          },
+          availability: {
+            details: {
+              homeLineups: 1,
+              awayLineups: 1,
+              athleteRows: 22,
+            },
+          },
+        },
+      },
+    },
+    {
+      id: "fallback-inputs",
+      time: "2026-06-22T10:00:00.000Z",
+      home: "德国",
+      away: "日本",
+      predictionSource: "snapshot",
+      weatherSnapshot: null,
+      venueMeta: { latitude: null, longitude: null, altitude: null },
+      predictionBreakdown: {
+        strength: {
+          home: { source: "baseline" },
+          away: { source: "placeholder" },
+        },
+        modelSignals: {
+          form: { details: { home: { sampleSize: 0 }, away: { sampleSize: 0 } } },
+          production: { details: { home: { sampleSize: 0 }, away: { sampleSize: 0 } } },
+          availability: { details: { homeLineups: 0, awayLineups: 0, athleteRows: 0 } },
+        },
+      },
+    },
+  ], {
+    now: new Date("2026-06-20T10:30:00.000Z"),
+  });
+
+  const metricByKey = new Map(health.inputCoverage.metrics.map((metric) => [metric.key, metric]));
+
+  assert.deepEqual(metricByKey.get("teamStrength"), {
+    key: "teamStrength",
+    label: "球队实力",
+    covered: 2,
+    total: 4,
+    coveragePct: 50,
+    status: "poor",
+  });
+  assert.equal(metricByKey.get("espnRecentForm").coveragePct, 50);
+  assert.equal(metricByKey.get("espnTeamStats").coveragePct, 50);
+  assert.equal(metricByKey.get("lineups").coveragePct, 50);
+  assert.equal(metricByKey.get("weather").coveragePct, 50);
+  assert.equal(metricByKey.get("venueCoordinates").coveragePct, 50);
+  assert.equal(metricByKey.get("altitude").coveragePct, 50);
+  assert.equal(health.inputCoverage.status, "poor");
+});
+
 test("buildDataHealth returns ok when snapshots and results are healthy", () => {
   const health = buildDataHealth([
     {
