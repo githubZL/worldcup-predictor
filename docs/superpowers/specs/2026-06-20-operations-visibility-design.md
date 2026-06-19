@@ -1,34 +1,34 @@
-# Operations Visibility Design
+# 运维可见性设计
 
-## Goal
+## 目标
 
-Make production operations easier to run and inspect by adding:
+通过以下能力让生产环境更容易部署、运行和检查：
 
-- a repeatable server deployment script
-- a latest maintenance status JSON file
-- a small frontend maintenance status display
+- 可重复执行的服务器部署脚本。
+- 最新维护任务状态 JSON 文件。
+- 前端展示一行轻量维护状态。
 
-This iteration should stay lightweight and avoid adding a database table, queue, or monitoring platform.
+本轮保持轻量，不新增数据库表、任务队列或监控平台。
 
-## Current Context
+## 当前上下文
 
-The server is deployed at `/opt/worldcup-predictor`.
+服务器部署目录为 `/opt/worldcup-predictor`。
 
-The app already has:
+应用已经具备：
 
 - `npm run maintenance:daily`
-- hourly cron execution on the server
+- 服务器上每小时执行一次的 cron
 - `worldcup-predictor.service`
-- Nginx serving `dist`
-- dashboard metadata with `generatedAt` and data source labels
+- Nginx 托管 `dist`
+- 仪表盘元信息中的 `generatedAt` 和数据源标签
 
-The missing piece is operational visibility: the page does not show whether the hourly maintenance task is healthy, and deployment is still a manual command sequence.
+缺失的是运维可见性：页面无法显示每小时维护任务是否健康，部署流程也仍是手动命令串。
 
-## Deployment Script
+## 部署脚本
 
-Add `scripts/deploy-server.sh`.
+新增 `scripts/deploy-server.sh`。
 
-The script should run on the server from the repository root and perform:
+脚本在服务器仓库根目录运行，执行：
 
 1. `git pull --ff-only`
 2. `npm ci`
@@ -38,17 +38,17 @@ The script should run on the server from the repository root and perform:
 6. `nginx -t`
 7. `nginx -s reload`
 
-The script should be intentionally server-oriented. It does not need to SSH into the server itself.
+脚本定位为服务器侧脚本，不需要自己 SSH 到服务器。
 
-## Maintenance Latest File
+## 最新维护状态文件
 
-Each `npm run maintenance:daily` run should write a compact latest status file after the run completes:
+每次执行 `npm run maintenance:daily` 后，都应写入紧凑状态文件：
 
 ```text
 logs/maintenance-latest.json
 ```
 
-The file should include:
+文件应包含：
 
 - `generatedAt`
 - `status`
@@ -66,11 +66,11 @@ The file should include:
 - `errorCount`
 - `errors`
 
-The file should be written for successful, partial, and failed runs. It should not include huge detail arrays from ESPN sync.
+无论运行成功、部分失败还是失败，都应写入该文件。文件中不应包含 ESPN 同步返回的大型 `details` 数组。
 
-## Dashboard Metadata
+## 仪表盘元信息
 
-The dashboard API should include:
+仪表盘 API 应包含：
 
 ```js
 meta.maintenance = {
@@ -85,7 +85,7 @@ meta.maintenance = {
 }
 ```
 
-If the file does not exist or cannot be parsed, the API should return:
+如果状态文件不存在或无法解析，API 应返回：
 
 ```js
 meta.maintenance = {
@@ -94,45 +94,45 @@ meta.maintenance = {
 }
 ```
 
-## Frontend Display
+## 前端展示
 
-The existing top status area should show a compact maintenance line:
+顶部状态区展示一行紧凑维护信息：
 
-- maintenance status label
-- latest maintenance time
-- ESPN persisted count
-- snapshot created count
+- 维护状态标签
+- 最近维护时间
+- ESPN 写入场次数
+- 快照创建数量
 
-Example:
+示例：
 
 ```text
 维护状态：正常 · 最近同步：2026/06/20 14:00 · ESPN 11 场 · 快照 0
 ```
 
-If status is unknown:
+未知状态示例：
 
 ```text
 维护状态：未知
 ```
 
-## Out of Scope
+## 暂不包含
 
-This iteration will not:
+本轮不做：
 
-- add Prometheus/Grafana
-- add alerting
-- add a maintenance database table
-- build an admin page
-- change prediction model logic
-- change cron frequency
+- Prometheus/Grafana
+- 告警系统
+- 维护任务数据库表
+- 管理后台页面
+- 预测模型逻辑修改
+- cron 频率调整
 
-## Testing
+## 测试
 
-Backend tests should prove:
+后端测试应证明：
 
-- compact maintenance status removes large `details`
-- latest file write happens for a maintenance run
-- dashboard metadata returns parsed maintenance status
-- malformed or missing status file returns `unknown`
+- 维护状态会移除大型 `details`
+- 维护运行后会写入最新状态文件
+- 仪表盘元信息可以返回解析后的维护状态
+- 状态文件缺失或格式错误时返回 `unknown`
 
-Frontend verification should use `npm run build`.
+前端通过 `npm run build` 验证。

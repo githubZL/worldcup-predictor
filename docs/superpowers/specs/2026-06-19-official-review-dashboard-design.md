@@ -1,66 +1,66 @@
-# Official Review Dashboard Design
+# 正式复盘仪表盘设计
 
-## Goal
+## 目标
 
-Make the model review section use trustworthy database-backed review data:
+让模型复盘区使用可信的数据库复盘数据：
 
-- Official review uses only pre-match prediction snapshots.
-- Current-model backtest uses the latest model recomputed over finished matches.
-- The frontend shows the difference clearly and exposes concrete miss examples.
+- 正式复盘只使用赛前预测快照。
+- 当前模型回测使用最新模型重新计算已完赛比赛。
+- 前端清楚展示两种口径的区别，并展示具体预测偏差样本。
 
-This work should not change the prediction model itself.
+本工作不修改预测模型本身。
 
-## Current Context
+## 当前上下文
 
-The project already separates two review policies in `modelReviewService`:
+项目已经在 `modelReviewService` 中区分两种复盘口径：
 
 - `official_snapshot_only`
 - `current_model_backtest`
 
-The frontend already has two tabs:
+前端已有两个按钮：
 
 - `正式复盘`
 - `模型回测`
 
-The missing pieces are richer review output and clearer UI evidence. The user should be able to see why a headline metric is what it is, including which matches were missed and how many finished matches were excluded from official review because no pre-match snapshot existed.
+缺失的是更丰富的复盘输出和更清晰的界面证据。用户应能看到核心指标为什么是这个结果，包括哪些比赛预测偏差较大，以及正式复盘中有多少已赛比赛因为没有赛前快照而被排除。
 
-## Data Semantics
+## 数据语义
 
-### Official Review
+### 正式复盘
 
-Official review includes only finished matches where:
+正式复盘只包含满足以下条件的已完赛比赛：
 
 - `predictionSource === "snapshot"`
 - `predictionReview.isFinished === true`
 
-Official review should expose:
+正式复盘应暴露：
 
-- sample size
-- total finished matches
-- excluded sample size
-- review policy
-- win/draw/loss hit rate
-- exact score hit rate
-- goal-difference-within-one rate
-- average goal-difference error
-- average total-goals error
-- reviewed match rows
-- biggest misses
+- 样本量
+- 已完赛总数
+- 被排除样本量
+- 复盘口径
+- 胜平负命中率
+- 精确比分命中率
+- 净胜球误差不超过 1 的比例
+- 平均净胜球误差
+- 平均总进球误差
+- 已复盘比赛行
+- 最大误差样本
 
-### Current-Model Backtest
+### 当前模型回测
 
-Current-model backtest includes finished matches using:
+当前模型回测包含已完赛比赛，优先使用：
 
-- `match.backtestReview`, when present
-- otherwise `match.predictionReview`
+- `match.backtestReview`
+- 如果不存在，则使用 `match.predictionReview`
 
-This is useful for model iteration, but it must be labeled as a current-model replay rather than a formal score.
+该口径用于模型迭代，但必须标注为当前模型重放，而不是正式成绩。
 
-It should expose the same row and miss fields as official review.
+它应暴露与正式复盘相同的比赛行和误差样本字段。
 
-## Match Row Shape
+## 比赛行结构
 
-Each reviewed row should include:
+每条复盘比赛行包含：
 
 - `id`
 - `time`
@@ -75,49 +75,49 @@ Each reviewed row should include:
 - `goalDiffError`
 - `totalGoalsError`
 
-Rows should be sorted by match time ascending. Biggest misses should sort by:
+比赛行按比赛时间升序排序。最大误差样本排序规则：
 
-1. goal-difference error descending
-2. total-goals error descending
-3. match time ascending
+1. 净胜球误差降序
+2. 总进球误差降序
+3. 比赛时间升序
 
-## Frontend Behavior
+## 前端行为
 
-The model review panel should keep the current two tabs.
+模型复盘面板保留两个按钮。
 
-For each tab, show:
+每个按钮下展示：
 
-- the existing metric cards
-- the current conclusion sentence
-- a compact “误差样本” list with up to three biggest misses
-- for official review only, show excluded finished sample count when greater than zero
+- 现有指标卡片
+- 当前结论句
+- 最多三条紧凑的“误差样本”
+- 仅在正式复盘中，当被排除样本量大于 0 时展示排除数量
 
-The list should not become a large table yet. A compact three-row list is enough for this iteration.
+本轮不做大型表格，三行紧凑列表即可。
 
-Example row:
+示例：
 
 ```text
 墨西哥 1-0 韩国 | 预测 1-1 | 胜平负未中 · 比分未中 · 净胜球误差 1
 ```
 
-## Out of Scope
+## 暂不包含
 
-This iteration will not:
+本轮不做：
 
-- change prediction weights
-- add drill-down pages
-- add charts
-- change database schema
-- clean historical snapshots
-- redesign the whole review card
+- 修改预测权重
+- 新增下钻详情页
+- 新增图表
+- 修改数据库 schema
+- 清理历史快照
+- 重设计整个复盘卡片
 
-## Testing
+## 测试
 
-Backend tests should prove:
+后端测试应证明：
 
-- official review includes match rows and biggest misses from snapshot matches only
-- current-model backtest includes all finished matches
-- finished computed matches are counted as excluded in official review
-- biggest misses are sorted predictably
+- 正式复盘只包含快照比赛行和最大误差样本。
+- 当前模型回测包含全部已完赛比赛。
+- 已完赛但实时计算的比赛会计入正式复盘排除样本。
+- 最大误差样本排序稳定可预测。
 
-Frontend should be verified by build and a quick browser/page check after deployment.
+前端通过构建和一次页面检查验证。

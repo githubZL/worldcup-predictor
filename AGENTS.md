@@ -1,7 +1,7 @@
-# Prototype Instructions
+# 原型协作说明
 
-Run the local server yourself and open the preview in the in-app browser. Do not give the user server-start instructions when you can run it.
+本项目涉及前端原型、后端接口、数据同步和预测模型。需要预览页面时，应优先由协作者自行启动本地服务，并在内置浏览器中打开预览；如果可以直接运行服务，就不要把启动服务的步骤丢给用户。
 
-Before making substantial visual changes, use the Product Design plugin's `get-context` skill when the visual source is unclear or no longer matches the current goal. When the user gives durable prototype-specific design feedback, preferences, or decisions, record them in `AGENTS.md`.
+在进行较大的视觉调整前，如果视觉来源不清晰，或当前页面目标已经和原参考图不一致，应先使用 Product Design 插件的 `get-context` 技能确认设计上下文。用户对原型提出的长期有效设计反馈、偏好或决策，应记录到本文件。
 
-When implementing from a selected generated mock, treat that image as the source of truth for layout, component anatomy, density, spacing, color, typography, visible content, and hierarchy.
+如果根据某张已选定的生成图、截图或设计稿实现页面，应把该图片视为布局、组件结构、信息密度、间距、颜色、字体、可见内容和层级关系的主要依据。

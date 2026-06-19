@@ -1,35 +1,32 @@
-# Daily Maintenance Implementation Plan
+# 每日维护实施计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **给自动化协作者的要求：** 按任务逐步实施；如需要使用 superpowers 工作流，优先使用 `superpowers:subagent-driven-development` 或 `superpowers:executing-plans`。清单使用 `- [ ]` 跟踪进度。
 
-**Goal:** Add a daily maintenance command that syncs recent ESPN match data and creates pre-match prediction snapshots.
+**目标：** 新增每日维护命令，用于同步近期 ESPN 比赛数据，并创建赛前预测快照。
 
-**Architecture:** Add a focused `maintenanceService` that resolves a Beijing-time date window, composes ESPN sync and prediction snapshots, and returns a structured summary. Add a CLI wrapper plus an npm script, without adding server-side timers or new database models.
+**架构：** 新增聚焦的 `maintenanceService`，负责解析北京时间日期窗口、编排 ESPN 同步和预测快照创建，并返回结构化摘要。不引入服务端定时器或新的数据库模型。
 
-**Tech Stack:** Node.js ES modules, built-in `node:test`, existing ESPN sync service, existing prediction snapshot service, npm scripts.
+**技术栈：** Node.js ES modules、内置 `node:test`、现有 ESPN 同步服务、现有预测快照服务、npm scripts。
 
----
+## 文件结构
 
-## File Structure
+- 新建 `server/src/services/maintenanceService.js`
+  - 负责日期窗口计算、参数解析辅助函数、维护编排、状态分类和可序列化错误摘要。
+- 新建 `server/src/services/maintenanceService.test.js`
+  - 使用依赖注入测试日期窗口、dry-run 传递、成功、部分失败和全部失败。
+- 新建 `server/src/scripts/runDailyMaintenance.js`
+  - CLI 入口，读取 `--date-from`、`--date-to`、`--dry-run`，调用服务，打印 JSON，并仅在状态为 `failed` 时以非 0 退出。
+- 修改 `package.json`
+  - 新增 `maintenance:daily`。
 
-- Create `server/src/services/maintenanceService.js`
-  - Owns date window calculation, option parsing helpers, maintenance orchestration, status classification, and serializable error summaries.
-- Create `server/src/services/maintenanceService.test.js`
-  - Tests date window, dry-run propagation, success, partial failure, and full failure using dependency injection.
-- Create `server/src/scripts/runDailyMaintenance.js`
-  - CLI entrypoint that reads `--date-from`, `--date-to`, `--dry-run`, calls the service, prints JSON, and exits non-zero only when status is `failed`.
-- Modify `package.json`
-  - Add `maintenance:daily`.
+## 任务 1：维护服务日期窗口
 
-## Task 1: Maintenance Service Date Window
+**文件：**
 
-**Files:**
-- Create: `server/src/services/maintenanceService.js`
-- Test: `server/src/services/maintenanceService.test.js`
+- 新建：`server/src/services/maintenanceService.js`
+- 测试：`server/src/services/maintenanceService.test.js`
 
-- [ ] **Step 1: Write the failing tests**
-
-Add to `server/src/services/maintenanceService.test.js`:
+- [ ] 编写失败测试：验证默认窗口为北京时间昨天到明天，显式日期可以覆盖默认值。
 
 ```js
 import test from "node:test";
@@ -64,19 +61,13 @@ test("resolveMaintenanceWindow lets explicit dates override defaults", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
-
-Run:
+- [ ] 运行测试，确认因为服务文件不存在而失败：
 
 ```bash
 node --test server/src/services/maintenanceService.test.js
 ```
 
-Expected: FAIL because `maintenanceService.js` does not exist.
-
-- [ ] **Step 3: Write minimal implementation**
-
-Create `server/src/services/maintenanceService.js`:
+- [ ] 实现最小功能：
 
 ```js
 const BEIJING_TIMEZONE = "Asia/Shanghai";
@@ -97,336 +88,114 @@ export function resolveMaintenanceWindow({ now = new Date(), dateFrom, dateTo } 
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
-
-Run:
+- [ ] 再次运行测试确认通过：
 
 ```bash
 node --test server/src/services/maintenanceService.test.js
 ```
 
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
+- [ ] 提交：
 
 ```bash
 git add server/src/services/maintenanceService.js server/src/services/maintenanceService.test.js
 git commit -m "feat: add maintenance date window"
 ```
 
-## Task 2: Maintenance Orchestration
+## 任务 2：维护任务编排
 
-**Files:**
-- Modify: `server/src/services/maintenanceService.js`
-- Modify: `server/src/services/maintenanceService.test.js`
+**文件：**
 
-- [ ] **Step 1: Write the failing tests**
+- 修改：`server/src/services/maintenanceService.js`
+- 修改：`server/src/services/maintenanceService.test.js`
 
-Append to `server/src/services/maintenanceService.test.js`:
+- [ ] 编写失败测试：验证维护流程会先同步 ESPN，再创建快照；ESPN 失败但快照成功时返回 `partial`；两者都失败时返回 `failed`。
 
-```js
-import { runDailyMaintenance } from "./maintenanceService.js";
-
-test("runDailyMaintenance syncs ESPN data then creates snapshots", async () => {
-  const calls = [];
-  const result = await runDailyMaintenance(
-    {
-      now: new Date("2026-06-19T01:30:00.000Z"),
-      dryRun: true,
-    },
-    {
-      syncEspnEnrichment: async (options) => {
-        calls.push(["sync", options]);
-        return { matched: 3, persisted: 3 };
-      },
-      createMissingPredictionSnapshots: async () => {
-        calls.push(["snapshot"]);
-        return { created: 2, skipped: 5, total: 7 };
-      },
-    },
-  );
-
-  assert.equal(result.status, "ok");
-  assert.deepEqual(result.window, {
-    dateFrom: "2026-06-18",
-    dateTo: "2026-06-20",
-    timezone: "Asia/Shanghai",
-  });
-  assert.deepEqual(calls, [
-    [
-      "sync",
-      {
-        dateFrom: "2026-06-18",
-        dateTo: "2026-06-20",
-        dryRun: true,
-      },
-    ],
-    ["snapshot"],
-  ]);
-  assert.deepEqual(result.snapshot, { created: 2, skipped: 5, total: 7 });
-});
-
-test("runDailyMaintenance returns partial when ESPN sync fails but snapshots succeed", async () => {
-  const result = await runDailyMaintenance(
-    { now: new Date("2026-06-19T01:30:00.000Z") },
-    {
-      syncEspnEnrichment: async () => {
-        throw new Error("espn unavailable");
-      },
-      createMissingPredictionSnapshots: async () => ({ created: 1, skipped: 0, total: 1 }),
-    },
-  );
-
-  assert.equal(result.status, "partial");
-  assert.equal(result.errors.length, 1);
-  assert.equal(result.errors[0].step, "espn-sync");
-  assert.equal(result.errors[0].message, "espn unavailable");
-  assert.deepEqual(result.snapshot, { created: 1, skipped: 0, total: 1 });
-});
-
-test("runDailyMaintenance returns failed when both sync and snapshots fail", async () => {
-  const result = await runDailyMaintenance(
-    { now: new Date("2026-06-19T01:30:00.000Z") },
-    {
-      syncEspnEnrichment: async () => {
-        throw new Error("espn unavailable");
-      },
-      createMissingPredictionSnapshots: async () => {
-        throw new Error("database unavailable");
-      },
-    },
-  );
-
-  assert.equal(result.status, "failed");
-  assert.deepEqual(
-    result.errors.map((error) => [error.step, error.message]),
-    [
-      ["espn-sync", "espn unavailable"],
-      ["prediction-snapshot", "database unavailable"],
-    ],
-  );
-});
-```
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Run:
+- [ ] 运行测试确认失败：
 
 ```bash
 node --test server/src/services/maintenanceService.test.js
 ```
 
-Expected: FAIL because `runDailyMaintenance` is not exported.
+- [ ] 实现 `runDailyMaintenance()`：
+  - 默认依赖 `syncEspnEnrichment`
+  - 默认依赖 `createMissingPredictionSnapshots`
+  - 接收依赖注入，方便测试
+  - 收集 `errors`
+  - 返回 `ok`、`partial` 或 `failed`
 
-- [ ] **Step 3: Write minimal implementation**
-
-Update `server/src/services/maintenanceService.js`:
-
-```js
-import { syncEspnEnrichment as defaultSyncEspnEnrichment } from "./espnEnrichmentSyncService.js";
-import { createMissingPredictionSnapshots as defaultCreateMissingPredictionSnapshots } from "./predictionSnapshotService.js";
-
-const BEIJING_TIMEZONE = "Asia/Shanghai";
-const BEIJING_OFFSET_MS = 8 * 60 * 60 * 1000;
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-function formatDateInBeijing(date) {
-  return new Date(date.getTime() + BEIJING_OFFSET_MS).toISOString().slice(0, 10);
-}
-
-function summarizeError(step, error) {
-  return {
-    step,
-    message: error instanceof Error ? error.message : String(error),
-  };
-}
-
-export function resolveMaintenanceWindow({ now = new Date(), dateFrom, dateTo } = {}) {
-  const todayStartUtc = new Date(`${formatDateInBeijing(now)}T00:00:00.000Z`);
-  return {
-    dateFrom: dateFrom ?? formatDateInBeijing(new Date(todayStartUtc.getTime() - DAY_MS)),
-    dateTo: dateTo ?? formatDateInBeijing(new Date(todayStartUtc.getTime() + DAY_MS)),
-    timezone: BEIJING_TIMEZONE,
-  };
-}
-
-export async function runDailyMaintenance(
-  { now = new Date(), dateFrom, dateTo, dryRun = false } = {},
-  {
-    syncEspnEnrichment = defaultSyncEspnEnrichment,
-    createMissingPredictionSnapshots = defaultCreateMissingPredictionSnapshots,
-  } = {},
-) {
-  const window = resolveMaintenanceWindow({ now, dateFrom, dateTo });
-  const errors = [];
-  let espnSync = null;
-  let snapshot = null;
-
-  try {
-    espnSync = await syncEspnEnrichment({
-      dateFrom: window.dateFrom,
-      dateTo: window.dateTo,
-      dryRun,
-    });
-  } catch (error) {
-    errors.push(summarizeError("espn-sync", error));
-  }
-
-  try {
-    snapshot = await createMissingPredictionSnapshots({ now });
-  } catch (error) {
-    errors.push(summarizeError("prediction-snapshot", error));
-  }
-
-  const status = errors.length === 0 ? "ok" : snapshot ? "partial" : "failed";
-
-  return {
-    status,
-    options: { dryRun },
-    window,
-    espnSync,
-    snapshot,
-    errors,
-  };
-}
-```
-
-- [ ] **Step 4: Run test to verify it passes**
-
-Run:
+- [ ] 运行测试确认通过：
 
 ```bash
 node --test server/src/services/maintenanceService.test.js
 ```
 
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
+- [ ] 提交：
 
 ```bash
 git add server/src/services/maintenanceService.js server/src/services/maintenanceService.test.js
 git commit -m "feat: orchestrate daily maintenance"
 ```
 
-## Task 3: CLI Script and NPM Command
+## 任务 3：CLI 入口与 npm 脚本
 
-**Files:**
-- Create: `server/src/scripts/runDailyMaintenance.js`
-- Modify: `package.json`
+**文件：**
 
-- [ ] **Step 1: Write the failing command expectation**
+- 新建：`server/src/scripts/runDailyMaintenance.js`
+- 修改：`package.json`
 
-Run:
+- [ ] 新增 CLI 参数解析：
+  - `--date-from=YYYY-MM-DD`
+  - `--date-to=YYYY-MM-DD`
+  - `--dry-run`
 
-```bash
-npm run maintenance:daily -- --dry-run
-```
-
-Expected: FAIL because the script does not exist in `package.json`.
-
-- [ ] **Step 2: Create CLI script**
-
-Create `server/src/scripts/runDailyMaintenance.js`:
-
-```js
-import "dotenv/config";
-
-import { runDailyMaintenance } from "../services/maintenanceService.js";
-
-function readArg(name) {
-  const prefix = `--${name}=`;
-  return process.argv.find((arg) => arg.startsWith(prefix))?.slice(prefix.length);
-}
-
-const args = new Set(process.argv.slice(2));
-
-const result = await runDailyMaintenance({
-  dateFrom: readArg("date-from"),
-  dateTo: readArg("date-to"),
-  dryRun: args.has("--dry-run"),
-});
-
-console.log(JSON.stringify(result, null, 2));
-
-if (result.status === "failed") {
-  process.exitCode = 1;
-}
-```
-
-- [ ] **Step 3: Add npm script**
-
-Modify `package.json` scripts:
+- [ ] 调用 `runDailyMaintenance()` 并打印 JSON。
+- [ ] 当状态为 `failed` 时设置 `process.exitCode = 1`，其他状态保持成功退出。
+- [ ] 在 `package.json` 中新增：
 
 ```json
 "maintenance:daily": "node server/src/scripts/runDailyMaintenance.js"
 ```
 
-- [ ] **Step 4: Run command to verify it works**
-
-Run:
+- [ ] 验证：
 
 ```bash
 npm run maintenance:daily -- --dry-run
+npm run maintenance:daily -- --date-from=2026-06-18 --date-to=2026-06-20 --dry-run
 ```
 
-Expected: JSON output with `status`, `window`, `espnSync`, `snapshot`, and `errors`.
-
-- [ ] **Step 5: Commit**
+- [ ] 提交：
 
 ```bash
-git add package.json server/src/scripts/runDailyMaintenance.js
+git add server/src/scripts/runDailyMaintenance.js package.json
 git commit -m "feat: add daily maintenance command"
 ```
 
-## Task 4: Final Verification and Push
+## 任务 4：整体验证
 
-**Files:**
-- No source changes expected.
-
-- [ ] **Step 1: Run focused tests**
-
-```bash
-node --test server/src/services/maintenanceService.test.js
-```
-
-Expected: PASS.
-
-- [ ] **Step 2: Run full tests**
+- [ ] 运行服务测试：
 
 ```bash
 npm test
 ```
 
-Expected: PASS.
-
-- [ ] **Step 3: Run build**
+- [ ] 运行前端构建：
 
 ```bash
 npm run build
 ```
 
-Expected: PASS.
+- [ ] 如需要，手动执行一次 dry-run，检查 JSON 摘要是否包含：
+  - `options`
+  - `window`
+  - `espn`
+  - `snapshot`
+  - `status`
+  - `errors`
 
-- [ ] **Step 4: Inspect git status**
+## 自检
 
-```bash
-git status -sb
-```
-
-Expected: clean branch ahead of `origin/main` by implementation commits.
-
-- [ ] **Step 5: Push**
-
-```bash
-git push
-```
-
-Expected: implementation commits are uploaded to `origin/main`.
-
----
-
-## Self-Review
-
-- Spec coverage: The plan covers the lightweight script, default Beijing window, explicit CLI overrides, dry-run passthrough, JSON summary, partial failure, and no server timers.
-- Placeholder scan: No TBD/TODO/implement-later placeholders remain.
-- Type consistency: `resolveMaintenanceWindow`, `runDailyMaintenance`, `dateFrom`, `dateTo`, `dryRun`, `espnSync`, and `snapshot` are used consistently across tests, service, and CLI.
+- 不引入新数据库表。
+- 不在 Fastify 中增加定时任务。
+- 快照不覆盖旧快照。
+- ESPN 失败时仍尽量创建快照。
+- 失败状态不会被成功退出码掩盖。

@@ -1,130 +1,103 @@
-# Operations Visibility Implementation Plan
+# 运维可见性实施计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **给自动化协作者的要求：** 按任务逐步实施；如需要使用 superpowers 工作流，优先使用 `superpowers:subagent-driven-development` 或 `superpowers:executing-plans`。清单使用 `- [ ]` 跟踪进度。
 
-**Goal:** Add a server deployment script and show latest maintenance-task health in the dashboard.
+**目标：** 新增服务器部署脚本，并在仪表盘展示最新维护任务健康状态。
 
-**Architecture:** Create a focused maintenance status service that compacts maintenance results, writes `logs/maintenance-latest.json`, and reads it into dashboard metadata. Keep deployment as a server-side shell script.
+**架构：** 新增聚焦的维护状态服务，用于压缩维护结果、写入 `logs/maintenance-latest.json`，并把该状态读入仪表盘元信息。部署流程保持为服务器侧 shell 脚本。
 
-**Tech Stack:** Node.js ES modules, `node:test`, React, Vite, shell script, existing Fastify dashboard API.
+**技术栈：** Node.js ES modules、`node:test`、React、Vite、shell 脚本、现有 Fastify 仪表盘 API。
 
----
+## 文件结构
 
-## File Structure
+- 新建 `server/src/services/maintenanceStatusService.js`
+  - 压缩维护输出，写入最新状态文件，读取最新状态文件。
+- 新建 `server/src/services/maintenanceStatusService.test.js`
+  - 单测覆盖压缩、写入/读取、缺失文件和格式错误文件。
+- 修改 `server/src/scripts/runDailyMaintenance.js`
+  - 在维护运行有结果后写入最新状态。
+- 修改 `server/src/services/dataGateway.js`
+  - 增加 `meta.maintenance`。
+- 修改 `src/App.jsx`
+  - 读取 `dashboardData.meta.maintenance` 并渲染紧凑维护状态。
+- 修改 `src/styles.css`
+  - 增加维护状态样式。
+- 新建 `scripts/deploy-server.sh`
+  - 服务器侧可重复部署命令。
 
-- Create `server/src/services/maintenanceStatusService.js`
-  - Compact maintenance output, write latest status file, read latest status file.
-- Create `server/src/services/maintenanceStatusService.test.js`
-  - Unit-test compaction, write/read, missing file, malformed file.
-- Modify `server/src/scripts/runDailyMaintenance.js`
-  - Write latest status in a `finally`-style flow after maintenance result exists.
-- Modify `server/src/services/dataGateway.js`
-  - Add `meta.maintenance`.
-- Modify `src/App.jsx`
-  - Read `dashboardData.meta.maintenance` and render compact maintenance text.
-- Modify `src/styles.css`
-  - Style compact maintenance status.
-- Create `scripts/deploy-server.sh`
-  - Server-side repeatable deploy command sequence.
+## 任务 1：维护状态服务
 
-## Task 1: Maintenance Status Service
+**文件：**
 
-**Files:**
-- Create: `server/src/services/maintenanceStatusService.js`
-- Test: `server/src/services/maintenanceStatusService.test.js`
+- 新建：`server/src/services/maintenanceStatusService.js`
+- 测试：`server/src/services/maintenanceStatusService.test.js`
 
-- [ ] **Step 1: Write failing tests**
-
-Create tests that assert:
-
-- `compactMaintenanceStatus(result)` removes ESPN `details`
-- `writeLatestMaintenanceStatus(result, { filePath })` writes JSON
-- `readLatestMaintenanceStatus({ filePath })` reads it back
-- missing file returns `{ status: "unknown", message: "尚无维护任务状态" }`
-- malformed file returns `{ status: "unknown", message: "维护任务状态文件不可读" }`
-
-- [ ] **Step 2: Run tests to verify failure**
+- [ ] 编写失败测试，断言：
+  - `compactMaintenanceStatus(result)` 会移除 ESPN `details`
+  - `writeLatestMaintenanceStatus(result, { filePath })` 会写入 JSON
+  - `readLatestMaintenanceStatus({ filePath })` 可以读回状态
+  - 缺失文件返回 `{ status: "unknown", message: "尚无维护任务状态" }`
+  - 格式错误文件返回 `{ status: "unknown", message: "维护任务状态文件不可读" }`
+- [ ] 运行测试确认失败：
 
 ```bash
 node --test server/src/services/maintenanceStatusService.test.js
 ```
 
-Expected: fail because service file does not exist.
-
-- [ ] **Step 3: Implement service**
-
-Implement:
-
-- `compactMaintenanceStatus(result, { generatedAt = new Date().toISOString() } = {})`
-- `writeLatestMaintenanceStatus(result, { filePath = "logs/maintenance-latest.json" } = {})`
-- `readLatestMaintenanceStatus({ filePath = "logs/maintenance-latest.json" } = {})`
-
-- [ ] **Step 4: Verify tests pass**
+- [ ] 实现服务函数：
+  - `compactMaintenanceStatus(result, { generatedAt = new Date().toISOString() } = {})`
+  - `writeLatestMaintenanceStatus(result, { filePath = "logs/maintenance-latest.json" } = {})`
+  - `readLatestMaintenanceStatus({ filePath = "logs/maintenance-latest.json" } = {})`
+- [ ] 再次运行测试确认通过：
 
 ```bash
 node --test server/src/services/maintenanceStatusService.test.js
 ```
 
-- [ ] **Step 5: Commit**
+- [ ] 提交：
 
 ```bash
 git add server/src/services/maintenanceStatusService.js server/src/services/maintenanceStatusService.test.js
 git commit -m "feat: add maintenance status service"
 ```
 
-## Task 2: Write Status From Maintenance Script and Expose Meta
+## 任务 2：维护脚本写状态并暴露元信息
 
-**Files:**
-- Modify: `server/src/scripts/runDailyMaintenance.js`
-- Modify: `server/src/services/dataGateway.js`
+**文件：**
 
-- [ ] **Step 1: Add tests**
+- 修改：`server/src/scripts/runDailyMaintenance.js`
+- 修改：`server/src/services/dataGateway.js`
 
-Add a data gateway test asserting `getDashboard` can include `meta.maintenance` by reading a status service dependency if dependency injection already exists. If dependency injection is too invasive, test `readLatestMaintenanceStatus` in Task 1 and manually verify dashboard output.
-
-- [ ] **Step 2: Update script**
-
-After `runDailyMaintenance`, call `writeLatestMaintenanceStatus(result)`.
-
-- [ ] **Step 3: Update dashboard meta**
-
-Import `readLatestMaintenanceStatus` and add `maintenance` to `meta`.
-
-- [ ] **Step 4: Verify**
+- [ ] 增加测试：如果数据网关已有依赖注入能力，断言 `getDashboard` 会包含 `meta.maintenance`；如果改动过重，则保留任务 1 的状态服务测试并手动验证仪表盘输出。
+- [ ] 在 `runDailyMaintenance` 之后调用 `writeLatestMaintenanceStatus(result)`。
+- [ ] 在仪表盘元信息中导入 `readLatestMaintenanceStatus` 并添加 `maintenance` 字段。
+- [ ] 验证：
 
 ```bash
 npm test
 ```
 
-- [ ] **Step 5: Commit**
+- [ ] 提交：
 
 ```bash
 git add server/src/scripts/runDailyMaintenance.js server/src/services/dataGateway.js
 git commit -m "feat: expose maintenance status in dashboard"
 ```
 
-## Task 3: Frontend Status and Deploy Script
+## 任务 3：前端状态展示与部署脚本
 
-**Files:**
-- Modify: `src/App.jsx`
-- Modify: `src/styles.css`
-- Create: `scripts/deploy-server.sh`
+**文件：**
 
-- [ ] **Step 1: Add frontend maintenance text**
+- 修改：`src/App.jsx`
+- 修改：`src/styles.css`
+- 新建：`scripts/deploy-server.sh`
 
-In `src/App.jsx`, derive a compact text from `dashboardData.meta.maintenance`:
-
-- unknown: `维护状态：未知`
-- ok: `维护状态：正常 · 最近同步：... · ESPN ... 场 · 快照 ...`
-- partial/failed: show `部分失败` / `失败` and error count
-
-- [ ] **Step 2: Style text**
-
-Add a small `.maintenance-status` style that fits the existing header/footer density.
-
-- [ ] **Step 3: Add deploy script**
-
-Create `scripts/deploy-server.sh` with:
+- [ ] 在 `src/App.jsx` 中根据 `dashboardData.meta.maintenance` 生成紧凑文案：
+  - 未知：`维护状态：未知`
+  - 正常：`维护状态：正常 · 最近同步：... · ESPN ... 场 · 快照 ...`
+  - 部分失败/失败：展示对应状态和错误数量
+- [ ] 增加 `.maintenance-status` 样式，使其适配现有头部/底部密度。
+- [ ] 新增部署脚本：
 
 ```bash
 #!/usr/bin/env bash
@@ -141,51 +114,49 @@ nginx -t
 nginx -s reload
 ```
 
-- [ ] **Step 4: Verify**
+- [ ] 验证：
 
 ```bash
 npm test
 npm run build
 ```
 
-- [ ] **Step 5: Commit**
+- [ ] 提交：
 
 ```bash
 git add src/App.jsx src/styles.css scripts/deploy-server.sh
 git commit -m "feat: show maintenance status"
 ```
 
-## Task 4: Push and Deploy
+## 任务 4：推送与部署
 
-- [ ] **Step 1: Push**
+- [ ] 推送：
 
 ```bash
 git push origin main
 ```
 
-- [ ] **Step 2: Deploy**
+- [ ] 部署：
 
 ```bash
 ssh root@49.232.246.121 "cd /opt/worldcup-predictor && bash scripts/deploy-server.sh"
 ```
 
-- [ ] **Step 3: Run maintenance once**
+- [ ] 手动运行一次维护：
 
 ```bash
 ssh root@49.232.246.121 "cd /opt/worldcup-predictor && npm run maintenance:daily"
 ```
 
-- [ ] **Step 4: Verify production**
+- [ ] 验证生产环境：
 
 ```bash
 curl -sS http://49.232.246.121/api/dashboard | head -c 500
 curl -sS http://49.232.246.121/ | head -c 300
 ```
 
----
+## 自检
 
-## Self-Review
-
-- Spec coverage: deployment script, latest maintenance JSON, dashboard metadata, frontend display.
-- Placeholder scan: no open placeholders remain.
-- Type consistency: status fields are shared through `meta.maintenance`.
+- 规格覆盖：部署脚本、最新维护 JSON、仪表盘元信息、前端展示。
+- 占位检查：不保留未处理占位项。
+- 类型一致性：状态字段统一通过 `meta.maintenance` 传递。

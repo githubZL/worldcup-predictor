@@ -1,14 +1,14 @@
-# World Cup Predictor API
+# 世界杯预测 API
 
-## Stack
+## 技术栈
 
 - Fastify
 - Prisma 5
 - PostgreSQL
-- Open-Meteo weather API
-- TheSportsDB optional public API
+- Open-Meteo 天气 API
+- TheSportsDB 可选公开 API
 
-## Setup
+## 本地启动
 
 ```bash
 cp .env.example .env
@@ -16,9 +16,9 @@ npm run prisma:generate
 npm run server
 ```
 
-`DATABASE_URL` is reserved for the remote PostgreSQL database. The current API can run without a database because it uses local fallback data while the schema and Prisma client are being prepared.
+`DATABASE_URL` 用于远程 PostgreSQL 数据库。当前 API 在数据库未配置或无数据时也可以运行，因为会使用本地兜底数据；同时 Prisma schema 和 Prisma client 已经为持久化数据做好准备。
 
-After PostgreSQL credentials are available:
+拿到 PostgreSQL 凭据后执行：
 
 ```bash
 npm run prisma:migrate
@@ -26,14 +26,14 @@ npm run db:seed
 npm run server
 ```
 
-For early remote database setup without creating migration files, use:
+早期远程数据库初始化如果暂时不创建迁移文件，可以使用：
 
 ```bash
 npm run db:push
 npm run db:seed
 ```
 
-## Environment
+## 环境变量
 
 ```text
 DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/worldcup_predictor?schema=public
@@ -43,7 +43,7 @@ ENABLE_LIVE_WEATHER=true
 ENABLE_SPORTSDB=true
 ```
 
-## API
+## 接口
 
 ```text
 GET /api/health
@@ -54,37 +54,37 @@ GET /api/teams
 POST /api/admin/sync-fifa
 ```
 
-## Data Strategy
+## 数据策略
 
-The API uses a data gateway:
+API 使用数据网关聚合多类数据：
 
-1. Local fallback data for fixtures, teams, venues, rankings, and model review.
-2. Open-Meteo for weather when the kickoff time is within the forecast horizon.
-3. TheSportsDB for optional public team enrichment.
-4. PostgreSQL/Prisma schema is ready for persistent data after credentials are added.
+1. 本地兜底数据：赛程、球队、场馆、排名和模型复盘。
+2. Open-Meteo：当开球时间仍处于天气预报窗口内时获取天气。
+3. TheSportsDB：可选的公开球队信息补充。
+4. PostgreSQL/Prisma：配置凭据后用于持久化赛程、球队、场馆和预测数据。
 
-When `DATABASE_URL` is configured and database rows exist, `/api/dashboard` and `/api/matches` read fixtures, teams, and venues from PostgreSQL. Without a database, they automatically use local fallback data.
+当 `DATABASE_URL` 已配置且数据库中有记录时，`/api/dashboard` 和 `/api/matches` 会从 PostgreSQL 读取赛程、球队和场馆。没有数据库或没有数据时，会自动回退到本地兜底数据。
 
-## FIFA Schedule Sync
+## FIFA 赛程同步
 
-The FIFA 2026 schedule can be synced into PostgreSQL with:
+可通过下面命令把 FIFA 2026 赛程同步到 PostgreSQL：
 
 ```bash
 npm run sync:fifa
 ```
 
-or through the API:
+也可以通过接口触发：
 
 ```bash
 curl -X POST http://127.0.0.1:4000/api/admin/sync-fifa
 ```
 
-Source endpoint:
+来源接口：
 
 ```text
 https://api.fifa.com/api/v3/calendar/matches?idCompetition=17&idSeason=285023&count=200&language=en
 ```
 
-The sync writes FIFA teams, venues, and 104 matches into PostgreSQL. Future matches ignore any placeholder score values returned by FIFA and remain `scheduled`.
+同步会写入 FIFA 球队、场馆和 104 场比赛。未来比赛会忽略 FIFA 返回的占位比分，并保持 `scheduled` 状态。
 
-竞彩赔率 data is intentionally excluded for now.
+竞彩赔率数据当前有意暂不接入。

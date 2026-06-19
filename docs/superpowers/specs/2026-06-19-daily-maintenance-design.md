@@ -1,122 +1,122 @@
-# Daily Maintenance Design
+# 每日维护设计
 
-## Goal
+## 目标
 
-Add a lightweight maintenance workflow that keeps match data fresh and creates pre-match prediction snapshots without changing the running Fastify server into a scheduler.
+新增一个轻量维护流程，用于保持比赛数据新鲜，并在赛前生成预测快照，同时不把正在运行的 Fastify 服务改造成定时任务调度器。
 
-The first version should solve two immediate needs:
+第一版需要解决两个直接问题：
 
-- Recently played matches should move from scheduled to finished after ESPN data is synced.
-- Upcoming matches should get immutable pre-match prediction snapshots for official review.
+- ESPN 数据同步后，已经结束的比赛应从未赛变为已赛。
+- 即将开始的比赛应生成不可变的赛前预测快照，供正式复盘使用。
 
-## Current Context
+## 当前上下文
 
-The project already has the core pieces:
+项目已经具备核心能力：
 
-- `syncEspnEnrichment` updates ESPN enrichment data and match result fields.
-- `createMissingPredictionSnapshots` creates prediction rows for upcoming matches that do not already have a snapshot for the current model version.
-- `dataGateway` prefers a stored prediction snapshot when one exists and computes a live prediction otherwise.
-- `modelReviewService` can distinguish official snapshot review from current-model backtest.
+- `syncEspnEnrichment` 会更新 ESPN 补充数据和比赛结果字段。
+- `createMissingPredictionSnapshots` 会为未来比赛生成当前模型版本下缺失的预测快照。
+- `dataGateway` 在有预测快照时优先使用快照，否则实时计算预测。
+- `modelReviewService` 可以区分正式快照复盘和当前模型回测。
 
-This feature should compose those pieces rather than introduce a new scheduler, queue, or database model.
+本功能应组合这些已有能力，而不是引入新的调度器、队列或数据库模型。
 
-## Proposed Interface
+## 对外命令
 
-Add a script:
+新增脚本：
 
 ```bash
 npm run maintenance:daily
 ```
 
-The script should also support:
+脚本同时支持：
 
 ```bash
 npm run maintenance:daily -- --date-from=2026-06-18 --date-to=2026-06-20
 npm run maintenance:daily -- --dry-run
 ```
 
-Default date window:
+默认日期窗口：
 
-- From yesterday in Beijing time.
-- To tomorrow in Beijing time.
+- 从北京时间昨天开始。
+- 到北京时间明天结束。
 
-This window is intentionally small. It updates recently completed matches, today matches, and near-future matches without scanning the whole tournament on every run.
+窗口刻意保持较小，用于更新刚结束的比赛、当天比赛和临近未来比赛，避免每次都扫描整届赛事。
 
-## Data Flow
+## 数据流
 
-1. Resolve the maintenance window.
-2. Run ESPN enrichment sync for the window.
-3. Create missing prediction snapshots for future, not-finished matches.
-4. Print a compact JSON summary.
+1. 解析维护时间窗口。
+2. 对该窗口运行 ESPN 补充数据同步。
+3. 为未来且未完赛的比赛创建缺失的预测快照。
+4. 打印紧凑 JSON 摘要。
 
-The summary should include:
+摘要应包含：
 
-- input options
-- resolved date window
-- ESPN sync result
-- snapshot result
-- status: `ok`, `partial`, or `failed`
+- 输入参数
+- 解析后的日期窗口
+- ESPN 同步结果
+- 快照创建结果
+- 状态：`ok`、`partial` 或 `failed`
 
-## Snapshot Rules
+## 快照规则
 
-Snapshots are for official review, so they must stay conservative:
+快照用于正式复盘，因此必须保守：
 
-- Create only when the match is not finished.
-- Create only when kickoff time is in the future.
-- Create only when no current model-version snapshot exists.
-- Do not overwrite existing snapshots.
-- Use the current `MODEL_VERSION`.
+- 仅在比赛未完赛时创建。
+- 仅在开球时间仍在未来时创建。
+- 仅在当前模型版本没有快照时创建。
+- 不覆盖已有快照。
+- 使用当前 `MODEL_VERSION`。
 
-If a model version changes later, the existing query by model version lets the new model create its own snapshots without deleting old ones.
+如果未来模型版本变化，按模型版本查询的机制可以让新模型创建自己的快照，不需要删除旧快照。
 
-## Error Handling
+## 错误处理
 
-The maintenance command should be readable when run manually or by cron.
+维护命令应便于人工运行和 cron 记录日志：
 
-- If ESPN sync fails, report the error.
-- If snapshot creation still can run safely, run it and mark the result as `partial`.
-- If both fail or setup is invalid, mark the result as `failed`.
-- Do not hide errors behind a success exit code when the whole maintenance run fails.
+- ESPN 同步失败时要报告错误。
+- 如果快照创建仍可安全执行，应继续执行并标记为 `partial`。
+- 如果两步都失败，或环境配置无效，应标记为 `failed`。
+- 整体维护失败时，不应以成功退出码隐藏错误。
 
-For the first implementation, it is acceptable for a failed ESPN sync to continue to snapshot creation, because snapshots can still be useful when the database already has enough data.
+第一版允许 ESPN 同步失败后继续创建快照，因为数据库中已有数据时，快照仍然有价值。
 
-## Out of Scope
+## 暂不包含
 
-This version will not:
+本版本不做：
 
-- Add server-side timers inside Fastify.
-- Add BullMQ, Redis, or a task queue.
-- Add a new database model for maintenance runs.
-- Auto-deploy cron jobs to the remote server.
-- Change frontend layout.
+- 在 Fastify 内添加服务端定时器。
+- 引入 BullMQ、Redis 或任务队列。
+- 新增维护运行记录数据库表。
+- 自动向远程服务器部署 cron。
+- 修改前端布局。
 
-Those can be added after the basic workflow is proven stable.
+这些能力可在基础流程稳定后再补。
 
-## Testing
+## 测试
 
-Add focused tests for the maintenance service:
+为维护服务增加聚焦测试：
 
-- Default Beijing date window resolves yesterday through tomorrow.
-- CLI options override the default window.
-- `dry-run` is passed through to ESPN sync.
-- Snapshot creation runs after ESPN sync.
-- ESPN sync failure still allows snapshot creation and returns `partial`.
-- Full failure returns `failed`.
+- 默认北京时间窗口为昨天到明天。
+- CLI 参数可以覆盖默认窗口。
+- `dry-run` 会传递给 ESPN 同步。
+- ESPN 同步后会执行快照创建。
+- ESPN 同步失败但快照成功时返回 `partial`。
+- 全部失败时返回 `failed`。
 
-Existing snapshot and ESPN sync service tests should remain unchanged unless a bug is found.
+除非发现问题，否则已有快照和 ESPN 同步服务测试不应改动。
 
-## Operational Usage
+## 运维使用
 
-Manual run:
+手动运行：
 
 ```bash
 npm run maintenance:daily
 ```
 
-Future cron usage:
+后续 cron 示例：
 
 ```bash
 cd /path/to/worldcup-predictor && npm run maintenance:daily
 ```
 
-The script output should be JSON so it can be logged and inspected later.
+脚本输出应为 JSON，方便记录和后续检查。

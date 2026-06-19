@@ -1,35 +1,42 @@
-**Source Visual Truth**
-- Path: `/var/folders/hc/m3t1cs0n07s5g43n3451hpv40000gn/T/codex-clipboard-096b26b3-f08e-4e1e-9094-bc4869ebff6e.png`
+**视觉参考**
 
-**Implementation Evidence**
-- URL: `http://localhost:8080/`
-- Screenshot: `/Users/liang/Desktop/vibecoding/世界杯/worldcup-predictor/qa-shots/revised-dashboard.png`
-- Viewport: `1440 x 900` during capture; layout metrics were checked against a 1024-height target and the rendered document height is close to the reference dashboard.
-- State: default dashboard, with one schedule-row interaction smoke test.
-- Full-view comparison evidence: the implementation now follows the provided screenshot's structure: compact left sidebar, single-line topbar, first-row focus prediction plus full betting calibration, right-side scene correction spanning two rows, dense schedule table, and four bottom analytics panels.
-- Focused region comparison evidence: the betting calibration and schedule table were specifically compressed to match the screenshot's data density and avoid horizontal overflow.
+- 路径：`/var/folders/hc/m3t1cs0n07s5g43n3451hpv40000gn/T/codex-clipboard-096b26b3-f08e-4e1e-9094-bc4869ebff6e.png`
 
-**Findings**
-- No actionable P0/P1/P2 findings remain.
+**实现验证**
 
-**Required Fidelity Surface Checks**
-- Fonts and typography: compact Chinese dashboard typography, heavier section titles, 10-12px table labels, and large score display match the target density.
-- Spacing and layout rhythm: revised to a 12-column dashboard grid so the top row, schedule row, right rail, and bottom four panels align like the reference.
-- Colors and visual tokens: dark graphite panels, gold title, green positive states, red risk/delta, amber medium-risk chips, and blue away probability align with the supplied visual target.
-- Image quality and asset fidelity: UI uses editable flag glyphs and a trophy mark for the prototype. This keeps the prototype lightweight; replacing them with final image assets is a P3 polish item.
-- Copy and content: includes the required 半场/全场、半全场、胜平负、受让球胜平负、竞彩校准、场景修正、盘口热度风险、专家因子权重 and复盘命中率 sections.
+- 地址：`http://localhost:8080/`
+- 截图：`/Users/liang/Desktop/vibecoding/世界杯/worldcup-predictor/qa-shots/revised-dashboard.png`
+- 视口：截图时为 `1440 x 900`；布局指标按接近 1024 高度的目标检查，渲染后的文档高度接近参考控制台。
+- 状态：默认仪表盘，并完成一次赛程行点击的冒烟测试。
+- 全局对比：当前实现已经贴近参考图结构，包括紧凑左侧栏、单行顶部栏、首屏焦点战预测、完整竞彩校准、右侧跨行场景修正、高密度赛程表和底部分析面板。
+- 局部对比：竞彩校准与赛程表已针对数据密度压缩，避免横向溢出。
 
-**Interaction Checks**
-- Schedule row click: passed. Clicking `墨西哥 vs 波兰` updates the focus match.
-- Data presence: passed. 8 schedule rows, 6 betting calibration rows across 胜平负/受让球, and 6 半全场 rows render.
-- Build: passed with `npm run build`.
+**发现**
 
-**Patches Made**
-- Reworked `App.jsx` to match the supplied dashboard: all betting-calibration submodules are visible at once, the schedule expands to 8 fixtures, and bottom analytics are split into four panels.
-- Reworked `styles.css` to use a 12-column compact dashboard grid and compressed row heights to match the reference image.
+- 暂无需要处理的 P0/P1/P2 问题。
 
-**Follow-up Polish**
-- P3: use official flag/trophy image assets for a more broadcast-grade final skin.
-- P3: wire the竞彩 calibration tables to a daily JSON import form.
+**保真检查项**
 
-**final result: passed**
+- 字体与排版：使用紧凑中文控制台排版，区块标题更醒目，表格标签约 10-12px，比分大字号展示，整体密度符合目标图。
+- 间距与节奏：已改为 12 栏控制台网格，使首行、赛程行、右侧栏和底部面板与参考图保持对齐。
+- 色彩与视觉变量：深色石墨面板、金色标题、绿色正向状态、红色风险/差值、琥珀色中风险标签、蓝色客胜概率与目标视觉一致。
+- 图片与素材：原型中使用可编辑旗帜字符和奖杯符号，便于轻量迭代；后续可替换为正式图片资产。
+- 文案与内容：已包含半场/全场、半全场、胜平负、受让球胜平负、竞彩校准、场景修正、盘口热度风险、专家因子权重和复盘命中率等模块。
+
+**交互检查**
+
+- 点击赛程行：通过。点击 `墨西哥 vs 波兰` 后焦点战会更新。
+- 数据展示：通过。可渲染 8 条赛程、胜平负/受让球共 6 行竞彩校准，以及 6 行半全场数据。
+- 构建：`npm run build` 通过。
+
+**已完成调整**
+
+- 重构 `App.jsx`，使仪表盘接近参考图：竞彩校准子模块同屏展示，赛程扩展到 8 场，底部分为四个分析面板。
+- 重构 `styles.css`，使用 12 栏紧凑控制台网格，并压缩行高以匹配参考图密度。
+
+**后续润色**
+
+- P3：使用官方旗帜和奖杯图片资产，提高最终视觉质感。
+- P3：将竞彩校准表接入每日 JSON 导入表单。
+
+**最终结果：通过**
