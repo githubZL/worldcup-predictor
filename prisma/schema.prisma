@@ -1,0 +1,211 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Team {
+  id          String   @id
+  name        String
+  nameEn      String?
+  countryCode String?
+  flag        String?
+  fifaRank    Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  homeMatches Match[] @relation("HomeTeam")
+  awayMatches Match[] @relation("AwayTeam")
+  matchStats  TeamMatchStat[]
+  recentForm  TeamRecentForm[]
+  lineups     MatchLineup[]
+}
+
+model Venue {
+  id        String   @id
+  name      String
+  city      String
+  country   String
+  latitude  Float
+  longitude Float
+  altitude  Int?
+  timezone  String
+  fallbackWeather String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  matches   Match[]
+  weather   WeatherSnapshot[]
+}
+
+model Match {
+  id          String   @id
+  stage       String
+  group       String?
+  kickoffAt   DateTime
+  status      String   @default("scheduled")
+  homeTeamId  String
+  awayTeamId  String
+  venueId     String
+  homeScore   Int?
+  awayScore   Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  homeTeam    Team     @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeam    Team     @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  venue       Venue    @relation(fields: [venueId], references: [id])
+  predictions Prediction[]
+  factors     PredictionFactor[]
+  markets     MarketOdd[]
+  teamStats   TeamMatchStat[]
+  lineups     MatchLineup[]
+}
+
+model ExternalId {
+  id         String   @id @default(cuid())
+  entityType String
+  localId    String
+  source     String
+  externalId String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([source, entityType, externalId])
+  @@index([entityType, localId])
+}
+
+model TeamMatchStat {
+  id        String   @id @default(cuid())
+  matchId   String
+  teamId    String
+  source    String
+  stats     Json
+  fetchedAt DateTime @default(now())
+
+  match     Match    @relation(fields: [matchId], references: [id])
+  team      Team     @relation(fields: [teamId], references: [id])
+
+  @@unique([matchId, teamId, source])
+  @@index([teamId, source])
+}
+
+model TeamRecentForm {
+  id              String   @id @default(cuid())
+  teamId          String
+  source          String
+  externalEventId String
+  eventDate       DateTime?
+  homeScore       Int?
+  awayScore       Int?
+  teamScore       Int?
+  opponentScore   Int?
+  result          String?
+  isHome          Boolean?
+  fetchedAt       DateTime @default(now())
+
+  team            Team     @relation(fields: [teamId], references: [id])
+
+  @@unique([teamId, source, externalEventId])
+  @@index([teamId, eventDate])
+}
+
+model MatchLineup {
+  id        String   @id @default(cuid())
+  matchId   String
+  teamId    String
+  source    String
+  athletes  Json
+  fetchedAt DateTime @default(now())
+
+  match     Match    @relation(fields: [matchId], references: [id])
+  team      Team     @relation(fields: [teamId], references: [id])
+
+  @@unique([matchId, teamId, source])
+  @@index([teamId, source])
+}
+
+model WeatherSnapshot {
+  id              String   @id @default(cuid())
+  venueId         String
+  forecastFor     DateTime
+  temperatureC    Float?
+  precipitationMm Float?
+  windKph         Float?
+  weatherCode     Int?
+  source          String
+  fetchedAt       DateTime @default(now())
+
+  venue           Venue    @relation(fields: [venueId], references: [id])
+
+  @@index([venueId, forecastFor])
+}
+
+model Prediction {
+  id                String   @id @default(cuid())
+  matchId           String
+  modelVersion      String
+  predictedHome     Int
+  predictedAway     Int
+  predictedHalfHome Int?
+  predictedHalfAway Int?
+  homeWinProb       Float
+  drawProb          Float
+  awayWinProb       Float
+  xgHome            Float?
+  xgAway            Float?
+  risk              String
+  explanation       Json?
+  createdAt         DateTime @default(now())
+
+  match             Match    @relation(fields: [matchId], references: [id])
+
+  @@index([matchId, modelVersion])
+}
+
+model PredictionFactor {
+  id          String   @id @default(cuid())
+  matchId     String
+  name        String
+  weight      Float
+  impact      Float
+  target      String?
+  description String?
+  createdAt   DateTime @default(now())
+
+  match       Match    @relation(fields: [matchId], references: [id])
+
+  @@index([matchId])
+}
+
+model MarketOdd {
+  id                 String   @id @default(cuid())
+  matchId            String
+  marketType         String
+  optionName         String
+  openOdds           Float?
+  currentOdds        Float?
+  impliedProbability Float?
+  source             String?
+  updatedAt          DateTime @default(now())
+
+  match              Match    @relation(fields: [matchId], references: [id])
+
+  @@index([matchId, marketType])
+}
+
+model ModelReview {
+  id           String   @id @default(cuid())
+  modelVersion String
+  window       String
+  marketType   String
+  hitRate      Float
+  roi          Float?
+  sampleSize   Int
+  calculatedAt DateTime @default(now())
+
+  @@index([modelVersion, window])
+}
