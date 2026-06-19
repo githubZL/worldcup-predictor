@@ -1180,6 +1180,55 @@ h3 small {
   font-size: 12px;
 }
 
+.review-miss-list {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.review-miss-list > b {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.review-miss-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(110px, auto) minmax(190px, 1.35fr);
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 7px 9px;
+  border: 1px solid rgba(127, 225, 133, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.review-miss-row span,
+.review-miss-row em,
+.review-miss-row i {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-miss-row span {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.review-miss-row em {
+  color: var(--gold);
+  font-style: normal;
+}
+
+.review-miss-row i {
+  color: var(--muted);
+  font-style: normal;
+}
+
 .review-summary b {
   flex: 0 0 auto;
   color: var(--green);

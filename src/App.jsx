@@ -581,6 +581,7 @@ export function App() {
     : reviewMode;
   const activeReview = activeReviewMode === "backtest" ? backtestReview : officialReview;
   const activeReviewLabel = activeReviewMode === "backtest" ? "模型回测" : "正式复盘";
+  const biggestReviewMisses = activeReview.biggestMisses ?? [];
   const selected = useMemo(
     () => currentMatches.find((match) => match.id === selectedId) ?? currentMatches[0],
     [currentMatches, selectedId],
@@ -1037,6 +1038,18 @@ export function App() {
                   <b>当前结论</b>
                   <span>{modelReviewSummary}</span>
                 </div>
+                {biggestReviewMisses.length > 0 ? (
+                  <div className="review-miss-list">
+                    <b>误差样本</b>
+                    {biggestReviewMisses.slice(0, 3).map((row) => (
+                      <div className="review-miss-row" key={row.id}>
+                        <span>{row.home} vs {row.away}</span>
+                        <em>{row.actualScore} / 预测 {row.predictedScore}</em>
+                        <i>{row.fullTimeHit ? "胜平负命中" : "胜平负未中"} · {row.scoreHit ? "比分命中" : "比分未中"} · 净胜球误差 {row.goalDiffError}</i>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
               </div>
               <div className="hit-list">
                 {activeReview.markets.map((item, index) => (
