@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildMatchPredictionEnrichment, resolveWeatherDisplay } from "./dataGateway.js";
+import { buildMatchPredictionEnrichment, getWeatherFetchMode, resolveWeatherDisplay } from "./dataGateway.js";
 
 test("buildMatchPredictionEnrichment passes only pre-match ESPN stats and keeps odds plus lineups observable", () => {
   const enrichment = buildMatchPredictionEnrichment({
@@ -60,4 +60,21 @@ test("resolveWeatherDisplay shows pending for future matches outside forecast ho
   });
 
   assert.equal(weather, "待更新");
+});
+
+test("getWeatherFetchMode uses historical weather for already kicked off matches", () => {
+  assert.equal(getWeatherFetchMode({
+    matchTime: "2026-06-19T10:00:00.000Z",
+    now: new Date("2026-06-20T10:00:00.000Z"),
+  }), "historical");
+
+  assert.equal(getWeatherFetchMode({
+    matchTime: "2026-06-21T10:00:00.000Z",
+    now: new Date("2026-06-20T10:00:00.000Z"),
+  }), "forecast");
+
+  assert.equal(getWeatherFetchMode({
+    matchTime: "2026-07-10T10:00:00.000Z",
+    now: new Date("2026-06-20T10:00:00.000Z"),
+  }), "pending");
 });

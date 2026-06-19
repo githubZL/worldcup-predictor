@@ -61,3 +61,33 @@ export async function fetchOpenMeteoWeather(venue, kickoffAt, { signal } = {}) {
     weatherCode: payload.hourly.weather_code?.[index] ?? null,
   };
 }
+
+export async function fetchOpenMeteoHistoricalWeather(venue, kickoffAt, { signal } = {}) {
+  const date = new Date(kickoffAt).toISOString().slice(0, 10);
+  const params = new URLSearchParams({
+    latitude: String(venue.latitude),
+    longitude: String(venue.longitude),
+    start_date: date,
+    end_date: date,
+    hourly: "temperature_2m,precipitation,weather_code,wind_speed_10m",
+    timezone: venue.timezone || "auto",
+  });
+
+  const response = await fetch(`https://archive-api.open-meteo.com/v1/archive?${params}`, { signal });
+  if (!response.ok) {
+    throw new Error(`Open-Meteo archive request failed: ${response.status}`);
+  }
+
+  const payload = await response.json();
+  const index = nearestHourlyIndex(payload.hourly?.time, kickoffAt);
+  if (index < 0) return null;
+
+  return {
+    source: "open-meteo-archive",
+    forecastFor: payload.hourly.time[index],
+    temperatureC: payload.hourly.temperature_2m?.[index] ?? null,
+    precipitationMm: payload.hourly.precipitation?.[index] ?? null,
+    windKph: payload.hourly.wind_speed_10m?.[index] ?? null,
+    weatherCode: payload.hourly.weather_code?.[index] ?? null,
+  };
+}

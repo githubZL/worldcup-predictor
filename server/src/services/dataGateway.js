@@ -6,7 +6,7 @@ import { readLatestMaintenanceStatus } from "./maintenanceStatusService.js";
 import { buildModelReview } from "./modelReviewService.js";
 import { resolveMatchPlaceholders } from "./placeholderResolver.js";
 import { MODEL_VERSION, buildPrediction, buildPredictionFromSnapshot, buildPredictionReview } from "./predictionService.js";
-import { fetchOpenMeteoWeather, formatWeatherSnapshot } from "./weatherApi.js";
+import { fetchOpenMeteoHistoricalWeather, fetchOpenMeteoWeather, formatWeatherSnapshot } from "./weatherApi.js";
 import { fetchSportsDbWorldCupTeams } from "./sportsApi.js";
 import {
   localizeCityName,
@@ -102,20 +102,26 @@ export function buildMatchPredictionEnrichment(match) {
   };
 }
 
+export function getWeatherFetchMode({ matchTime, now = new Date() }) {
+  const kickoffTime = new Date(matchTime).getTime();
+  const nowTime = now instanceof Date ? now.getTime() : new Date(now).getTime();
+  const forecastHorizonMs = FORECAST_HORIZON_DAYS * DAY_MS;
+
+  if (!Number.isFinite(kickoffTime) || !Number.isFinite(nowTime)) return "fallback";
+  if (kickoffTime < nowTime) return "historical";
+  if (kickoffTime <= nowTime + forecastHorizonMs) return "forecast";
+  return "pending";
+}
+
 export function resolveWeatherDisplay({
   matchTime,
   now = new Date(),
   weatherSnapshot,
   fallbackWeather,
 }) {
-  const kickoffTime = new Date(matchTime).getTime();
-  const nowTime = now instanceof Date ? now.getTime() : new Date(now).getTime();
-  const forecastHorizonMs = FORECAST_HORIZON_DAYS * DAY_MS;
-  const isFutureBeyondForecast = Number.isFinite(kickoffTime)
-    && Number.isFinite(nowTime)
-    && kickoffTime > nowTime + forecastHorizonMs;
+  const weatherMode = getWeatherFetchMode({ matchTime, now });
 
-  if (!weatherSnapshot && isFutureBeyondForecast) return "待更新";
+  if (!weatherSnapshot && weatherMode === "pending") return "待更新";
   return formatWeatherSnapshot(weatherSnapshot, fallbackWeather);
 }
 
@@ -124,14 +130,17 @@ async function enrichMatch(match) {
   const awayTeam = match.awayTeam;
   const venue = match.venue;
   let weatherSnapshot = null;
-  const kickoffTime = new Date(match.time).getTime();
   const now = Date.now();
-  const forecastHorizonMs = FORECAST_HORIZON_DAYS * DAY_MS;
-  const isForecastable = kickoffTime >= now && kickoffTime <= now + forecastHorizonMs;
+  const weatherMode = getWeatherFetchMode({ matchTime: match.time, now: new Date(now) });
 
-  if (process.env.ENABLE_LIVE_WEATHER !== "false" && isForecastable) {
+  if (process.env.ENABLE_LIVE_WEATHER !== "false" && weatherMode !== "pending") {
     try {
-      weatherSnapshot = await withTimeout((signal) => fetchOpenMeteoWeather(venue, match.time, { signal }));
+      weatherSnapshot = await withTimeout((signal) => {
+        if (weatherMode === "historical") {
+          return fetchOpenMeteoHistoricalWeather(venue, match.time, { signal });
+        }
+        return fetchOpenMeteoWeather(venue, match.time, { signal });
+      });
     } catch {
       weatherSnapshot = null;
     }
