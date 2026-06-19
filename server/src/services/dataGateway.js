@@ -39,7 +39,7 @@ function normalizeLocalMatch(match) {
   };
 }
 
-async function withTimeout(task, timeoutMs = 3500) {
+async function withTimeout(task, timeoutMs = 8000) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -48,6 +48,23 @@ async function withTimeout(task, timeoutMs = 3500) {
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function mapWithConcurrency(items, concurrency, mapper) {
+  const results = new Array(items.length);
+  let nextIndex = 0;
+
+  async function worker() {
+    while (nextIndex < items.length) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      results[currentIndex] = await mapper(items[currentIndex], currentIndex);
+    }
+  }
+
+  const workerCount = Math.min(concurrency, items.length);
+  await Promise.all(Array.from({ length: workerCount }, worker));
+  return results;
 }
 
 function rowTime(row) {
@@ -229,7 +246,7 @@ export async function getMatches() {
   }
 
   const resolvedMatches = resolveMatchPlaceholders(sourceMatches);
-  const enrichedMatches = await Promise.all(resolvedMatches.map(enrichMatch));
+  const enrichedMatches = await mapWithConcurrency(resolvedMatches, 8, enrichMatch);
   return { matches: enrichedMatches, source };
 }
 
