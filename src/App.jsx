@@ -856,7 +856,9 @@ export function App() {
             <b>数据来源：{dataSourceText}</b>
             <b>{dataStatus === "error" ? "兜底" : dataStatus === "loading" ? "同步中" : "正常"}</b>
             <b className={`maintenance-status ${maintenanceClass}`}>{maintenanceText}</b>
-            <b className={`data-health-status ${dataHealthClass}`}>{dataHealthText}</b>
+            <button className={`data-health-status ${dataHealthClass}`} onClick={() => setDrawer("data-health")} title="查看数据健康详情">
+              {dataHealthText}
+            </button>
           </div>
           <div className="toolbar">
             <button className="select-btn" onClick={() => setTimeMode((mode) => mode === "beijing" ? "local" : "beijing")} title="切换赛程显示时区">
@@ -1147,25 +1149,68 @@ export function App() {
         </footer>
         {notice ? <div className="toast">{notice}</div> : null}
       </main>
-      {drawer ? <InfoDrawer type={drawer} onClose={() => setDrawer(null)} /> : null}
+      {drawer ? <InfoDrawer type={drawer} dataHealth={dataHealth} onClose={() => setDrawer(null)} /> : null}
     </div>
   );
 }
 
-function InfoDrawer({ type, onClose }) {
+function InfoDrawer({ type, dataHealth, onClose }) {
   const isModel = type === "model";
+  const isDataHealth = type === "data-health";
+  const healthIssues = dataHealth?.issues ?? [];
+  const healthSummary = dataHealth?.issueSummary ?? {};
+  const drawerTitle = isDataHealth ? "数据健康诊断" : isModel ? "模型说明" : "设置";
+  const drawerSubtitle = isDataHealth
+    ? "快照、赛果同步与建议动作"
+    : isModel
+      ? "预测逻辑与因子解释"
+      : "当前为 MVP 配置预览";
 
   return (
     <aside className="info-drawer" role="dialog" aria-modal="true">
       <div className="drawer-head">
         <div>
-          <span>{isModel ? "模型说明" : "设置"}</span>
-          <small>{isModel ? "预测逻辑与因子解释" : "当前为 MVP 配置预览"}</small>
+          <span>{drawerTitle}</span>
+          <small>{drawerSubtitle}</small>
         </div>
         <button onClick={onClose}>关闭</button>
       </div>
 
-      {isModel ? (
+      {isDataHealth ? (
+        <div className="drawer-body">
+          <section>
+            <h3>当前状态</h3>
+            <p>
+              未来比赛 {dataHealth?.snapshot?.upcoming ?? 0} 场，赛前快照覆盖 {dataHealth?.snapshot?.coveragePct ?? 0}%；
+              已开赛超时未同步比分 {dataHealth?.resultSync?.overdueWithoutResult ?? 0} 场。
+            </p>
+            <div className="health-summary">
+              <span>高优先级 {healthSummary.high ?? 0}</span>
+              <span>中优先级 {healthSummary.medium ?? 0}</span>
+              <span>总问题 {healthSummary.total ?? 0}</span>
+            </div>
+          </section>
+          <section>
+            <h3>诊断列表</h3>
+            {healthIssues.length ? (
+              <div className="health-issue-list">
+                {healthIssues.map((issue) => (
+                  <article className={`health-issue ${issue.severity}`} key={`${issue.type}-${issue.match.id}`}>
+                    <div>
+                      <b>{issue.match.home} vs {issue.match.away}</b>
+                      <span>{formatUpdatedAt(issue.match.time)} · {issue.match.status || "状态待确认"}</span>
+                    </div>
+                    <p>{issue.reason}</p>
+                    <em>{issue.action}</em>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p>当前没有需要处理的数据健康问题。</p>
+            )}
+          </section>
+        </div>
+      ) : isModel ? (
         <div className="drawer-body">
           <section>
             <h3>Elo + 泊松</h3>

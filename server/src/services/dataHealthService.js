@@ -36,6 +36,29 @@ function compactMatch(match) {
   };
 }
 
+function buildIssue({ type, severity, action, reason, match }) {
+  return {
+    type,
+    severity,
+    action,
+    reason,
+    match: compactMatch(match),
+  };
+}
+
+function summarizeIssues(issues) {
+  return issues.reduce((summary, issue) => {
+    summary.total += 1;
+    summary[issue.severity] = (summary[issue.severity] ?? 0) + 1;
+    return summary;
+  }, {
+    total: 0,
+    high: 0,
+    medium: 0,
+    low: 0,
+  });
+}
+
 function percentage(part, total) {
   if (!total) return 100;
   return Math.round((part / total) * 1000) / 10;
@@ -66,10 +89,28 @@ export function buildDataHealth(matches = [], {
     : missingSnapshotMatches.length > 0
       ? "warning"
       : "ok";
+  const issues = [
+    ...overdueResultMatches.map((match) => buildIssue({
+      type: "result_not_synced",
+      severity: "high",
+      action: "同步 ESPN 赛果",
+      reason: `比赛已开赛超过 ${resultGraceHours} 小时，但数据库仍无真实比分。`,
+      match,
+    })),
+    ...missingSnapshotMatches.map((match) => buildIssue({
+      type: "missing_snapshot",
+      severity: "medium",
+      action: "补赛前预测快照",
+      reason: "未来比赛尚无当前模型版本的赛前快照，正式复盘会缺样本。",
+      match,
+    })),
+  ];
 
   return {
     generatedAt: now.toISOString(),
     status,
+    issueSummary: summarizeIssues(issues),
+    issues: issues.slice(0, LIST_LIMIT),
     snapshot: {
       upcoming: futureMatches.length,
       withSnapshot: snapshotMatches.length,

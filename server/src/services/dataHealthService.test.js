@@ -62,6 +62,36 @@ test("buildDataHealth flags matches that should have synced results", () => {
   assert.deepEqual(health.resultSync.matches.map((match) => match.id), ["overdue"]);
 });
 
+test("buildDataHealth exposes diagnostic issues with suggested actions", () => {
+  const health = buildDataHealth([
+    {
+      id: "missing-snapshot",
+      time: "2026-06-21T10:00:00.000Z",
+      home: "巴西",
+      away: "法国",
+      predictionSource: "computed",
+      status: "scheduled",
+    },
+    {
+      id: "overdue-result",
+      time: "2026-06-20T04:00:00.000Z",
+      home: "墨西哥",
+      away: "韩国",
+      predictionSource: "snapshot",
+      status: "scheduled",
+    },
+  ], {
+    now: new Date("2026-06-20T10:30:00.000Z"),
+  });
+
+  assert.deepEqual(health.issues.map((issue) => [issue.type, issue.severity, issue.match.id, issue.action]), [
+    ["result_not_synced", "high", "overdue-result", "同步 ESPN 赛果"],
+    ["missing_snapshot", "medium", "missing-snapshot", "补赛前预测快照"],
+  ]);
+  assert.equal(health.issueSummary.high, 1);
+  assert.equal(health.issueSummary.medium, 1);
+});
+
 test("buildDataHealth returns ok when snapshots and results are healthy", () => {
   const health = buildDataHealth([
     {

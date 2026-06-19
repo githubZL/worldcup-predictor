@@ -199,8 +199,13 @@ h1 {
 
 .data-health-status {
   max-width: 440px;
+  min-height: auto;
+  padding: 0;
+  border: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  background: transparent;
+  text-align: left;
 }
 
 .select-btn {
@@ -1430,6 +1435,67 @@ h3 small {
   color: #b7c5cb;
   font-size: 13px;
   line-height: 1.65;
+}
+
+.health-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.health-summary span {
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: #dce8ec;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--soft-line);
+  font-size: 12px;
+}
+
+.health-issue-list {
+  display: grid;
+  gap: 8px;
+}
+
+.health-issue {
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--soft-line);
+}
+
+.health-issue.high {
+  border-color: rgba(255, 94, 94, 0.28);
+}
+
+.health-issue.medium {
+  border-color: rgba(226, 179, 65, 0.3);
+}
+
+.health-issue div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.health-issue b {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.health-issue span,
+.health-issue em {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.health-issue em {
+  color: var(--green);
+  font-weight: 800;
 }
 
 @media (max-width: 1260px) {
