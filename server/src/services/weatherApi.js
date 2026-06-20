@@ -27,7 +27,7 @@ function nearestHourlyIndex(times, kickoffAt) {
   return bestIndex;
 }
 
-export function formatWeatherSnapshot(snapshot, fallback) {
+export function formatWeatherSnapshot(snapshot, fallback = "天气待接入") {
   if (!snapshot) return fallback;
   const label = WEATHER_LABELS.get(snapshot.weatherCode) ?? "天气";
   const temp = Number.isFinite(snapshot.temperatureC) ? `${Math.round(snapshot.temperatureC)}°C` : "";

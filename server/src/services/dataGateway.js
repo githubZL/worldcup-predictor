@@ -124,7 +124,7 @@ export function getWeatherFetchMode({ matchTime, now = new Date() }) {
   const nowTime = now instanceof Date ? now.getTime() : new Date(now).getTime();
   const forecastHorizonMs = FORECAST_HORIZON_DAYS * DAY_MS;
 
-  if (!Number.isFinite(kickoffTime) || !Number.isFinite(nowTime)) return "fallback";
+  if (!Number.isFinite(kickoffTime) || !Number.isFinite(nowTime)) return "unavailable";
   if (kickoffTime < nowTime) return "historical";
   if (kickoffTime <= nowTime + forecastHorizonMs) return "forecast";
   return "pending";
@@ -134,12 +134,11 @@ export function resolveWeatherDisplay({
   matchTime,
   now = new Date(),
   weatherSnapshot,
-  fallbackWeather,
 }) {
   const weatherMode = getWeatherFetchMode({ matchTime, now });
 
   if (!weatherSnapshot && weatherMode === "pending") return "待更新";
-  return formatWeatherSnapshot(weatherSnapshot, fallbackWeather);
+  return formatWeatherSnapshot(weatherSnapshot, "天气待接入");
 }
 
 async function enrichMatch(match) {
@@ -167,7 +166,6 @@ async function enrichMatch(match) {
     matchTime: match.time,
     now: new Date(now),
     weatherSnapshot,
-    fallbackWeather: venue.fallbackWeather,
   });
   const localizedHomeTeam = { ...homeTeam, name: localizeTeamName(homeTeam.name) };
   const localizedAwayTeam = { ...awayTeam, name: localizeTeamName(awayTeam.name) };
@@ -252,7 +250,7 @@ export async function getMatches() {
 
 export async function getDashboard() {
   const { matches: enrichedMatches, source } = await getMatches();
-  const weatherSource = process.env.ENABLE_LIVE_WEATHER === "false" ? "local-weather-fallback" : "open-meteo-with-fallback";
+  const weatherSource = process.env.ENABLE_LIVE_WEATHER === "false" ? "weather-disabled" : "open-meteo-with-gaps";
   const sportsSource = process.env.ENABLE_SPORTSDB === "false" ? "disabled" : "thesportsdb-optional";
   const maintenance = await readLatestMaintenanceStatus();
   const meta = buildDashboardMeta({

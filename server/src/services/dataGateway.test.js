@@ -62,6 +62,17 @@ test("resolveWeatherDisplay shows pending for future matches outside forecast ho
   assert.equal(weather, "待更新");
 });
 
+test("resolveWeatherDisplay shows missing instead of fallback when real weather is unavailable", () => {
+  const weather = resolveWeatherDisplay({
+    matchTime: "2026-06-21T10:00:00.000Z",
+    now: new Date("2026-06-20T10:00:00.000Z"),
+    weatherSnapshot: null,
+    fallbackWeather: "晴 25°C",
+  });
+
+  assert.equal(weather, "天气待接入");
+});
+
 test("getWeatherFetchMode uses historical weather for already kicked off matches", () => {
   assert.equal(getWeatherFetchMode({
     matchTime: "2026-06-19T10:00:00.000Z",

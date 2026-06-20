@@ -5,8 +5,9 @@ function statusForSchedule(source) {
 }
 
 function statusForWeather(source) {
-  if (source === "open-meteo-with-fallback") return "real_with_fallback";
-  return "fallback";
+  if (source === "open-meteo-with-gaps") return "partial";
+  if (source === "weather-disabled") return "missing";
+  return "missing";
 }
 
 function statusForSports(source) {
@@ -57,7 +58,7 @@ export function buildDashboardMeta({
         label: "天气",
         status: statusForWeather(weatherSource),
         source: weatherSource,
-        detail: weatherSource === "open-meteo-with-fallback" ? "优先 Open-Meteo，失败后使用场馆兜底天气" : "使用场馆兜底天气",
+        detail: weatherSource === "open-meteo-with-gaps" ? "来自 Open-Meteo；缺失时显示待接入，不再使用场馆兜底天气" : "天气接口已关闭或暂未接入",
       },
       sports: {
         label: "球队扩展",

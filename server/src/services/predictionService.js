@@ -126,6 +126,10 @@ function isKnockoutStage(stage) {
 
 function getWeatherAdjustment(weatherText) {
   const text = String(weatherText ?? "");
+  if (/待接入|待更新|缺失|unavailable|pending/i.test(text)) {
+    return { factor: 1, label: "天气数据缺失，未参与节奏修正" };
+  }
+
   if (/雷|暴雨|大雨|雪|强风|大风/.test(text)) {
     return { factor: 0.88, label: "恶劣天气压低节奏" };
   }

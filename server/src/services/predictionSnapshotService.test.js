@@ -127,5 +127,5 @@ test("createMissingPredictionSnapshots records observable pre-match data quality
     lineups: 2,
     marketOdds: 1,
   });
-  assert.equal(savedRecord.explanation.snapshotQuality.weather.source, "fallback");
+  assert.equal(savedRecord.explanation.snapshotQuality.weather.source, "missing");
 });

@@ -294,7 +294,7 @@ const fallbackDashboard = {
     },
     dataQuality: {
       schedule: { label: "赛程", status: "fallback", detail: "使用本地兜底赛程" },
-      weather: { label: "天气", status: "fallback", detail: "使用场馆兜底天气" },
+      weather: { label: "天气", status: "missing", detail: "天气接口未返回时显示待接入" },
       prediction: { label: "预测", status: "computed", detail: "由泊松比分矩阵计算" },
       market: { label: "竞彩", status: "simulated", detail: "真实竞彩赔率暂未接入" },
     },
@@ -320,8 +320,10 @@ function formatDelta(value) {
 function getQualityText(status) {
   const textByStatus = {
     real: "真实",
-    real_with_fallback: "真实+兜底",
+    real_with_fallback: "真实+缺失",
+    partial: "真实+缺失",
     fallback: "兜底",
+    missing: "待接入",
     computed: "计算",
     simulated: "模拟",
     optional: "可选",
@@ -332,8 +334,8 @@ function getQualityText(status) {
 }
 
 function getQualityClass(status) {
-  if (status === "real" || status === "real_with_fallback" || status === "computed") return "good";
-  if (status === "fallback" || status === "optional") return "warn";
+  if (status === "real" || status === "computed") return "good";
+  if (status === "real_with_fallback" || status === "partial" || status === "fallback" || status === "optional" || status === "missing") return "warn";
   if (status === "simulated") return "danger";
   return "muted";
 }
@@ -673,8 +675,8 @@ export function App() {
     : dataStatus === "error"
       ? "本地兜底"
       : scheduleSource === "database-postgresql"
-        ? `PostgreSQL 数据库 + ${weatherSource === "open-meteo-with-fallback" ? "Open-Meteo" : "天气兜底"}`
-        : "公开 API + 本地兜底";
+        ? `PostgreSQL 数据库 + ${weatherSource === "open-meteo-with-gaps" ? "Open-Meteo 真实天气" : "天气待接入"}`
+        : "公开 API + 待补真实数据";
   const lastUpdated = formatUpdatedAt(dashboardData.meta?.generatedAt);
   const maintenance = dashboardData.meta?.maintenance;
   const maintenanceText = formatMaintenanceStatus(maintenance);

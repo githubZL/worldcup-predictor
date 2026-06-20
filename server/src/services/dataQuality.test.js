@@ -3,18 +3,18 @@ import test from "node:test";
 
 import { buildDashboardMeta } from "./dataQuality.js";
 
-test("buildDashboardMeta labels real, fallback, computed, and simulated dashboard sources", () => {
+test("buildDashboardMeta labels real, partial, computed, and simulated dashboard sources", () => {
   const meta = buildDashboardMeta({
     generatedAt: "2026-06-18T10:00:00.000Z",
     scheduleSource: "database-postgresql",
-    weatherSource: "open-meteo-with-fallback",
+    weatherSource: "open-meteo-with-gaps",
     sportsSource: "thesportsdb-optional",
   });
 
   assert.equal(meta.generatedAt, "2026-06-18T10:00:00.000Z");
   assert.equal(meta.dataSources.schedule, "database-postgresql");
   assert.equal(meta.dataQuality.schedule.status, "real");
-  assert.equal(meta.dataQuality.weather.status, "real_with_fallback");
+  assert.equal(meta.dataQuality.weather.status, "partial");
   assert.equal(meta.dataQuality.prediction.status, "computed");
   assert.equal(meta.dataQuality.market.status, "simulated");
   assert.equal(meta.modelStatus.prediction.engine, "poisson-v0.8");
@@ -25,13 +25,13 @@ test("buildDashboardMeta marks local schedule data as fallback", () => {
   const meta = buildDashboardMeta({
     generatedAt: "2026-06-18T10:00:00.000Z",
     scheduleSource: "local-fixture-fallback",
-    weatherSource: "local-weather-fallback",
+    weatherSource: "weather-disabled",
     sportsSource: "disabled",
   });
 
   assert.equal(meta.dataQuality.schedule.status, "fallback");
   assert.equal(meta.dataQuality.teams.status, "fallback");
   assert.equal(meta.dataQuality.venues.status, "fallback");
-  assert.equal(meta.dataQuality.weather.status, "fallback");
+  assert.equal(meta.dataQuality.weather.status, "missing");
   assert.equal(meta.dataQuality.sports.status, "disabled");
 });

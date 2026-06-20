@@ -27,7 +27,7 @@ async function fetchForecastWeatherSnapshot(match) {
 
 function countSnapshotQuality(match, enrichment, prediction, weatherSnapshot, weatherText, freezeWindowHours, now) {
   const weatherSource = weatherSnapshot?.source
-    ?? (weatherText === "待更新" ? "pending" : "fallback");
+    ?? (weatherText === "待更新" ? "pending" : "missing");
   const strength = prediction.predictionBreakdown?.strength ?? {};
 
   return {
@@ -78,7 +78,6 @@ async function buildSnapshotPrediction(
     matchTime: match.time,
     now,
     weatherSnapshot,
-    fallbackWeather: venue.fallbackWeather,
   });
   const enrichment = buildMatchPredictionEnrichment(match);
   const prediction = buildPrediction(match, homeTeam, awayTeam, venue, weather, enrichment);
