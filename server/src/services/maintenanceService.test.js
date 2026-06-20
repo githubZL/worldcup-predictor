@@ -35,7 +35,7 @@ test("resolveLiveMaintenanceWindow defaults to a narrow Beijing window around no
   });
 
   assert.deepEqual(window, {
-    dateFrom: "2026-06-20",
+    dateFrom: "2026-06-19",
     dateTo: "2026-06-20",
     timezone: "Asia/Shanghai",
     lookbackHours: 8,
@@ -198,7 +198,7 @@ test("runLiveMaintenance syncs ESPN in the live window and does not create snaps
     [
       "sync",
       {
-        dateFrom: "2026-06-20",
+        dateFrom: "2026-06-19",
         dateTo: "2026-06-20",
         dryRun: false,
       },

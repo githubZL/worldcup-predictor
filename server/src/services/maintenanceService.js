@@ -10,6 +10,10 @@ function formatDateInBeijing(date) {
   return new Date(date.getTime() + BEIJING_OFFSET_MS).toISOString().slice(0, 10);
 }
 
+function formatDateInUtc(date) {
+  return date.toISOString().slice(0, 10);
+}
+
 function summarizeError(step, error) {
   return {
     step,
@@ -34,8 +38,8 @@ export function resolveLiveMaintenanceWindow({
   lookaheadHours = 2,
 } = {}) {
   return {
-    dateFrom: dateFrom ?? formatDateInBeijing(new Date(now.getTime() - lookbackHours * HOUR_MS)),
-    dateTo: dateTo ?? formatDateInBeijing(new Date(now.getTime() + lookaheadHours * HOUR_MS)),
+    dateFrom: dateFrom ?? formatDateInUtc(new Date(now.getTime() - lookbackHours * HOUR_MS)),
+    dateTo: dateTo ?? formatDateInUtc(new Date(now.getTime() + lookaheadHours * HOUR_MS)),
     timezone: BEIJING_TIMEZONE,
     lookbackHours,
     lookaheadHours,
