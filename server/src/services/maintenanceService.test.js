@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { resolveMaintenanceWindow, runDailyMaintenance } from "./maintenanceService.js";
+import { resolveLiveMaintenanceWindow, resolveMaintenanceWindow, runDailyMaintenance, runLiveMaintenance } from "./maintenanceService.js";
 
 test("resolveMaintenanceWindow defaults to yesterday through tomorrow in Beijing time", () => {
   const window = resolveMaintenanceWindow({
@@ -26,6 +26,20 @@ test("resolveMaintenanceWindow lets explicit dates override defaults", () => {
     dateFrom: "2026-06-10",
     dateTo: "2026-06-12",
     timezone: "Asia/Shanghai",
+  });
+});
+
+test("resolveLiveMaintenanceWindow defaults to a narrow Beijing window around now", () => {
+  const window = resolveLiveMaintenanceWindow({
+    now: new Date("2026-06-20T01:30:00.000Z"),
+  });
+
+  assert.deepEqual(window, {
+    dateFrom: "2026-06-20",
+    dateTo: "2026-06-20",
+    timezone: "Asia/Shanghai",
+    lookbackHours: 8,
+    lookaheadHours: 2,
   });
 });
 
@@ -159,4 +173,39 @@ test("runDailyMaintenance returns failed when both sync and snapshots fail", asy
       ["prediction-snapshot", "database unavailable"],
     ],
   );
+});
+
+test("runLiveMaintenance syncs ESPN in the live window and does not create snapshots", async () => {
+  const calls = [];
+  const result = await runLiveMaintenance(
+    {
+      now: new Date("2026-06-20T01:30:00.000Z"),
+    },
+    {
+      syncEspnEnrichment: async (options) => {
+        calls.push(["sync", options]);
+        return { matched: 2, persisted: 2 };
+      },
+      createMissingPredictionSnapshots: async () => {
+        calls.push(["snapshot"]);
+        return { created: 1 };
+      },
+    },
+  );
+
+  assert.equal(result.status, "ok");
+  assert.deepEqual(calls, [
+    [
+      "sync",
+      {
+        dateFrom: "2026-06-20",
+        dateTo: "2026-06-20",
+        dryRun: false,
+      },
+    ],
+  ]);
+  assert.deepEqual(result.snapshot, {
+    skipped: true,
+    reason: "live maintenance only syncs near-time ESPN results",
+  });
 });

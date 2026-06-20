@@ -4,6 +4,7 @@ import { createMissingPredictionSnapshots as defaultCreateMissingPredictionSnaps
 const BEIJING_TIMEZONE = "Asia/Shanghai";
 const BEIJING_OFFSET_MS = 8 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
 
 function formatDateInBeijing(date) {
   return new Date(date.getTime() + BEIJING_OFFSET_MS).toISOString().slice(0, 10);
@@ -22,6 +23,22 @@ export function resolveMaintenanceWindow({ now = new Date(), dateFrom, dateTo } 
     dateFrom: dateFrom ?? formatDateInBeijing(new Date(todayStartUtc.getTime() - DAY_MS)),
     dateTo: dateTo ?? formatDateInBeijing(new Date(todayStartUtc.getTime() + DAY_MS)),
     timezone: BEIJING_TIMEZONE,
+  };
+}
+
+export function resolveLiveMaintenanceWindow({
+  now = new Date(),
+  dateFrom,
+  dateTo,
+  lookbackHours = 8,
+  lookaheadHours = 2,
+} = {}) {
+  return {
+    dateFrom: dateFrom ?? formatDateInBeijing(new Date(now.getTime() - lookbackHours * HOUR_MS)),
+    dateTo: dateTo ?? formatDateInBeijing(new Date(now.getTime() + lookaheadHours * HOUR_MS)),
+    timezone: BEIJING_TIMEZONE,
+    lookbackHours,
+    lookaheadHours,
   };
 }
 
@@ -72,6 +89,39 @@ export async function runDailyMaintenance(
     window,
     espnSync,
     snapshot,
+    errors,
+  };
+}
+
+export async function runLiveMaintenance(
+  { now = new Date(), dateFrom, dateTo, dryRun = false, lookbackHours = 8, lookaheadHours = 2 } = {},
+  {
+    syncEspnEnrichment = defaultSyncEspnEnrichment,
+  } = {},
+) {
+  const window = resolveLiveMaintenanceWindow({ now, dateFrom, dateTo, lookbackHours, lookaheadHours });
+  const errors = [];
+  let espnSync = null;
+
+  try {
+    espnSync = await syncEspnEnrichment({
+      dateFrom: window.dateFrom,
+      dateTo: window.dateTo,
+      dryRun,
+    });
+  } catch (error) {
+    errors.push(summarizeError("espn-sync", error));
+  }
+
+  return {
+    status: errors.length === 0 ? "ok" : "failed",
+    options: { dryRun, mode: "live" },
+    window,
+    espnSync,
+    snapshot: {
+      skipped: true,
+      reason: "live maintenance only syncs near-time ESPN results",
+    },
     errors,
   };
 }

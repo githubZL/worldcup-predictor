@@ -18,6 +18,7 @@
     "report:model-backtest": "node server/src/scripts/reportModelBacktest.js",
     "snapshot:predictions": "node server/src/scripts/snapshotPredictions.js",
     "maintenance:daily": "node server/src/scripts/runDailyMaintenance.js",
+    "maintenance:live": "node server/src/scripts/runLiveMaintenance.js",
     "probe:data-sources": "node server/src/scripts/probeDataSources.js",
     "probe:espn-canonical": "node server/src/scripts/probeEspnCanonicalDraft.js",
     "probe:espn-sync-plan": "node server/src/scripts/probeEspnSyncPlan.js",
