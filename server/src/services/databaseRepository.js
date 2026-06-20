@@ -83,6 +83,8 @@ export async function readDatabaseMatches({ modelVersion } = {}) {
     homeTeam: row.homeTeam,
     awayTeam: row.awayTeam,
     venue: row.venue,
+    lineups: row.lineups,
+    markets: row.markets,
     predictionSnapshot: row.predictions[0] ?? null,
   }));
 }
@@ -91,5 +93,25 @@ export async function createPredictionSnapshot(data) {
   const client = await getPrisma();
   if (!client) return null;
 
-  return client.prediction.create({ data });
+  const existing = await client.prediction.findFirst({
+    where: {
+      matchId: data.matchId,
+      modelVersion: data.modelVersion,
+    },
+  });
+  if (existing) return existing;
+
+  try {
+    return await client.prediction.create({ data });
+  } catch (error) {
+    if (error?.code === "P2002") {
+      return client.prediction.findFirst({
+        where: {
+          matchId: data.matchId,
+          modelVersion: data.modelVersion,
+        },
+      });
+    }
+    throw error;
+  }
 }

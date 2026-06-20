@@ -101,11 +101,13 @@ export async function runLiveMaintenance(
   { now = new Date(), dateFrom, dateTo, dryRun = false, lookbackHours = 8, lookaheadHours = 2 } = {},
   {
     syncEspnEnrichment = defaultSyncEspnEnrichment,
+    createMissingPredictionSnapshots = defaultCreateMissingPredictionSnapshots,
   } = {},
 ) {
   const window = resolveLiveMaintenanceWindow({ now, dateFrom, dateTo, lookbackHours, lookaheadHours });
   const errors = [];
   let espnSync = null;
+  let snapshot = null;
 
   try {
     espnSync = await syncEspnEnrichment({
@@ -117,15 +119,31 @@ export async function runLiveMaintenance(
     errors.push(summarizeError("espn-sync", error));
   }
 
+  if (dryRun) {
+    snapshot = {
+      dryRun: true,
+      created: 0,
+      skipped: 0,
+      total: 0,
+      snapshots: [],
+      message: "Prediction snapshot creation skipped during dry run.",
+    };
+  } else {
+    try {
+      snapshot = await createMissingPredictionSnapshots({ now });
+    } catch (error) {
+      errors.push(summarizeError("prediction-snapshot", error));
+    }
+  }
+
+  const status = errors.length === 0 ? "ok" : espnSync || snapshot ? "partial" : "failed";
+
   return {
-    status: errors.length === 0 ? "ok" : "failed",
+    status,
     options: { dryRun, mode: "live" },
     window,
     espnSync,
-    snapshot: {
-      skipped: true,
-      reason: "live maintenance only syncs near-time ESPN results",
-    },
+    snapshot,
     errors,
   };
 }

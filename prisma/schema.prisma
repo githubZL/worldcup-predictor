@@ -164,7 +164,7 @@ model Prediction {
 
   match             Match    @relation(fields: [matchId], references: [id])
 
-  @@index([matchId, modelVersion])
+  @@unique([matchId, modelVersion])
 }
 
 model PredictionFactor {

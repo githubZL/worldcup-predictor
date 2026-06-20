@@ -175,7 +175,7 @@ test("runDailyMaintenance returns failed when both sync and snapshots fail", asy
   );
 });
 
-test("runLiveMaintenance syncs ESPN in the live window and does not create snapshots", async () => {
+test("runLiveMaintenance syncs ESPN in the live window and creates near-term prediction snapshots", async () => {
   const calls = [];
   const result = await runLiveMaintenance(
     {
@@ -188,7 +188,7 @@ test("runLiveMaintenance syncs ESPN in the live window and does not create snaps
       },
       createMissingPredictionSnapshots: async () => {
         calls.push(["snapshot"]);
-        return { created: 1 };
+        return { created: 1, skipped: 6, total: 7 };
       },
     },
   );
@@ -203,9 +203,7 @@ test("runLiveMaintenance syncs ESPN in the live window and does not create snaps
         dryRun: false,
       },
     ],
+    ["snapshot"],
   ]);
-  assert.deepEqual(result.snapshot, {
-    skipped: true,
-    reason: "live maintenance only syncs near-time ESPN results",
-  });
+  assert.deepEqual(result.snapshot, { created: 1, skipped: 6, total: 7 });
 });
