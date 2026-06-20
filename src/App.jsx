@@ -486,6 +486,13 @@ function formatStrengthLabel(strength) {
   return `${getStrengthSourceLabel(strength.source)} ${strength.rank ?? "--"} · 攻${strength.attack ?? "--"} 防${strength.defense ?? "--"}`;
 }
 
+function getFullPickProbability(match) {
+  const pick = match?.fullPick;
+  if (pick === "平局") return match?.probs?.[1];
+  if (pick === "客胜") return match?.probs?.[2];
+  return match?.probs?.[0];
+}
+
 function formatScorelineLabel(label) {
   return String(label ?? "").replaceAll(" ", "").replace(" - ", "-");
 }
@@ -1029,7 +1036,7 @@ export function App() {
                       <span>{match.stage}{match.group ? ` · ${displayGroup(match.group)}` : ""}</span>
                       <span className="teams-cell"><b>{match.homeFlag} {match.home}</b><em>vs</em><b>{match.awayFlag} {match.away}</b></span>
                       <span>{match.score}</span>
-                      <span className="pick">{match.fullPick}（{match.probs[0]}%）</span>
+                      <span className="pick">{match.fullPick}（{getFullPickProbability(match)}%）</span>
                       <span className="factor-chips">
                         {primaryFactor ? <i className={primaryFactor[1] >= 0 ? "positive" : "negative"}>{primaryFactor[0]} {formatDelta(primaryFactor[1])}</i> : <i>待定</i>}
                       </span>
